@@ -1,0 +1,2 @@
+ALTER TABLE "resource_files" ADD COLUMN "storage_provider" varchar(20) DEFAULT 'local' NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "resource_files_storage_key_unique" ON "resource_files" USING btree ("storage_key");
