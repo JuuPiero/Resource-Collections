@@ -28,6 +28,7 @@ export const users = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     email: varchar("email", { length: 320 }).notNull(),
+    passwordHash: varchar("password_hash", { length: 255 }),
     name: varchar("name", { length: 160 }),
     avatarUrl: text("avatar_url"),
     isActive: boolean("is_active").notNull().default(true),

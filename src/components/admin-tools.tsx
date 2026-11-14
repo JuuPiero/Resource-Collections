@@ -115,11 +115,11 @@ export function UploadResourceForm() {
       .getAll("previews")
       .filter((value): value is File => value instanceof File && value.size > 0);
     if (!(archive instanceof File) || !archive.size) {
-      setMessage({ type: "error", text: "Hãy chọn một file ZIP." });
+      setMessage({ type: "error", text: "Choose a ZIP archive." });
       return;
     }
     if (previewFiles.length > 8) {
-      setMessage({ type: "error", text: "Chỉ được chọn tối đa 8 ảnh preview." });
+      setMessage({ type: "error", text: "Select no more than 8 preview images." });
       return;
     }
 
@@ -128,7 +128,7 @@ export function UploadResourceForm() {
     const processor = createMediaWorker();
     let completedArchive: ArchiveDescriptor | null = null;
     try {
-      setProgress("Browser đang tính SHA-256 của ZIP...");
+      setProgress("Calculating the archive SHA-256 in your browser...");
       const hashResult = await processor.request("hash", archive);
       if (!hashResult.sha256) throw new Error("Browser could not hash the archive.");
 
@@ -154,15 +154,15 @@ export function UploadResourceForm() {
 
       const archiveUpload = (async (): Promise<ArchiveDescriptor> => {
         if (prepared.strategy === "direct") {
-          setProgress("Đang upload ZIP trực tiếp lên object storage: 0%");
+          setProgress("Uploading ZIP directly to object storage: 0%");
           await uploadWithProgress(prepared.uploadUrl, archive, prepared.headers, (percent) => {
-            setProgress(`Đang upload ZIP trực tiếp lên object storage: ${percent}%`);
+            setProgress(`Uploading ZIP directly to object storage: ${percent}%`);
           });
           completedArchive = prepared.archive;
           return prepared.archive;
         }
 
-        setProgress("Đang upload ZIP qua server local (development fallback)...");
+        setProgress("Uploading ZIP through the local development server...");
         const localForm = new FormData();
         localForm.append("archive", archive);
         localForm.append("sha256", hashResult.sha256!);
@@ -174,7 +174,7 @@ export function UploadResourceForm() {
 
       const previewUpload = (async (): Promise<HostedPreview[]> => {
         if (!previewFiles.length) return [];
-        setProgress("Browser đang resize và nén ảnh preview...");
+        setProgress("Resizing and compressing preview images in your browser...");
         const optimized: File[] = [];
         for (const file of previewFiles) {
           try {
@@ -190,7 +190,7 @@ export function UploadResourceForm() {
           }
         }
 
-        setProgress("Đang gửi các preview đã tối ưu tới Pixhost...");
+        setProgress("Uploading optimized previews to Pixhost...");
         const previewForm = new FormData();
         for (const file of optimized) previewForm.append("previews", file);
         const response = await fetch("/api/uploads/previews", {
@@ -209,7 +209,7 @@ export function UploadResourceForm() {
       const storedArchive = archiveResult.value;
       const hostedPreviews = previewResult.value;
 
-      setProgress("Đang lưu metadata và quyền truy cập...");
+      setProgress("Saving resource details and access permissions...");
       const createResponse = await fetch("/api/resources", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -230,7 +230,7 @@ export function UploadResourceForm() {
       setArchiveName("");
       setPreviewCount(0);
       setProgress("");
-      setMessage({ type: "success", text: "Resource đã được tạo thành công." });
+      setMessage({ type: "success", text: "Resource created successfully." });
       router.refresh();
     } catch (error) {
       if (completedArchive) {
@@ -256,39 +256,39 @@ export function UploadResourceForm() {
     <form action={submit} className="grid gap-4" ref={formRef}>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="grid gap-1.5 text-xs font-medium text-pine sm:col-span-2">
-          Tên tài nguyên
-          <input className="rounded-xl border border-line bg-white px-3.5 py-3 text-sm outline-none placeholder:text-muted/60 focus:border-moss" maxLength={180} name="title" placeholder="Ví dụ: Botanical UI Kit" required />
+          Resource name
+          <input className="rounded-xl border border-line bg-background px-3.5 py-3 text-sm text-foreground outline-none placeholder:text-muted/60 focus:border-pine" maxLength={180} name="title" placeholder="e.g. Botanical UI Kit" required />
         </label>
         <label className="grid gap-1.5 text-xs font-medium text-pine">
-          Phiên bản
-          <input className="rounded-xl border border-line bg-white px-3.5 py-3 text-sm outline-none placeholder:text-muted/60 focus:border-moss" maxLength={40} name="version" placeholder="2.4.0" />
+          Version
+          <input className="rounded-xl border border-line bg-background px-3.5 py-3 text-sm text-foreground outline-none placeholder:text-muted/60 focus:border-pine" maxLength={40} name="version" placeholder="2.4.0" />
         </label>
         <label className="grid gap-1.5 text-xs font-medium text-pine">
-          Trạng thái
-          <select className="rounded-xl border border-line bg-white px-3.5 py-3 text-sm outline-none focus:border-moss" defaultValue="draft" name="status"><option value="draft">Bản nháp</option><option value="published">Xuất bản</option></select>
+          Status
+          <select className="rounded-xl border border-line bg-background px-3.5 py-3 text-sm text-foreground outline-none focus:border-pine" defaultValue="draft" name="status"><option value="draft">Draft</option><option value="published">Published</option></select>
         </label>
         <label className="grid gap-1.5 text-xs font-medium text-pine sm:col-span-2">
-          Mô tả
-          <textarea className="min-h-24 rounded-xl border border-line bg-white px-3.5 py-3 text-sm outline-none placeholder:text-muted/60 focus:border-moss" maxLength={5000} name="description" placeholder="Nội dung và mục đích của resource..." />
+          Description
+          <textarea className="min-h-24 rounded-xl border border-line bg-background px-3.5 py-3 text-sm text-foreground outline-none placeholder:text-muted/60 focus:border-pine" maxLength={5000} name="description" placeholder="What is included in this resource?" />
         </label>
         <label className="grid gap-1.5 text-xs font-medium text-pine">
-          Quyền truy cập
-          <select className="rounded-xl border border-line bg-white px-3.5 py-3 text-sm outline-none focus:border-moss" defaultValue="restricted" name="accessLevel"><option value="restricted">Chỉ email được cấp quyền</option><option value="authenticated">Mọi thành viên đăng nhập</option><option value="public">Public</option></select>
+          Access level
+          <select className="rounded-xl border border-line bg-background px-3.5 py-3 text-sm text-foreground outline-none focus:border-pine" defaultValue="restricted" name="accessLevel"><option value="restricted">Invited emails only</option><option value="authenticated">Any signed-in member</option><option value="public">Public</option></select>
         </label>
         <label className="group grid cursor-pointer gap-1.5 text-xs font-medium text-pine">
-          File ZIP
-          <span className="flex min-h-12 items-center gap-2 truncate rounded-xl border border-dashed border-moss/55 bg-moss/5 px-3.5 text-muted group-hover:bg-moss/10"><UploadCloud className="shrink-0" size={16} /> {archiveName || "Chọn archive"}</span>
+          ZIP archive
+          <span className="flex min-h-12 items-center gap-2 truncate rounded-xl border border-dashed border-moss/55 bg-moss/5 px-3.5 text-muted group-hover:bg-moss/10"><UploadCloud className="shrink-0" size={16} /> {archiveName || "Choose an archive"}</span>
           <input accept=".zip,application/zip" className="sr-only" name="archive" onChange={(event) => setArchiveName(event.target.files?.[0]?.name ?? "")} required type="file" />
         </label>
         <label className="group grid cursor-pointer gap-1.5 text-xs font-medium text-pine sm:col-span-2">
-          Ảnh preview (tối đa 8)
-          <span className="flex min-h-14 items-center gap-2 rounded-xl border border-dashed border-clay/45 bg-clay/5 px-3.5 text-muted group-hover:bg-clay/10"><ImagePlus size={16} /> {previewCount ? `${previewCount} ảnh đã chọn · browser sẽ tự nén` : "Chọn JPG, PNG, WebP hoặc GIF"}</span>
+          Preview images (up to 8)
+          <span className="flex min-h-14 items-center gap-2 rounded-xl border border-dashed border-clay/45 bg-clay/5 px-3.5 text-muted group-hover:bg-clay/10"><ImagePlus size={16} /> {previewCount ? `${previewCount} selected · optimized in your browser` : "Choose JPG, PNG, WebP, or GIF files"}</span>
           <input accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" multiple name="previews" onChange={(event) => setPreviewCount(event.target.files?.length ?? 0)} type="file" />
         </label>
       </div>
       {progress && <p className="flex items-center gap-2 rounded-xl bg-pine/5 px-3 py-2.5 text-xs text-pine" role="status"><LoaderCircle className="animate-spin" size={14} /> {progress}</p>}
-      {message && <p className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs ${message.type === "error" ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`} role="status">{message.type === "error" ? <X size={14} /> : <Check size={14} />} {message.text}</p>}
-      <button className="mt-1 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-pine px-4 text-sm font-semibold text-white hover:bg-[#214a37] disabled:cursor-not-allowed disabled:opacity-60" disabled={busy} type="submit">{busy ? <LoaderCircle className="animate-spin" size={16} /> : <UploadCloud size={16} />}{busy ? "Đang xử lý..." : "Tạo resource"}</button>
+      {message && <p className={`flex items-center gap-2 border px-3 py-2.5 text-xs ${message.type === "error" ? "border-clay/40 bg-clay/10 text-clay" : "border-pine/40 bg-pine/10 text-pine"}`} role="status">{message.type === "error" ? <X size={14} /> : <Check size={14} />} {message.text}</p>}
+      <button className="mt-1 inline-flex h-11 items-center justify-center gap-2 border border-pine bg-pine px-4 font-mono text-xs font-bold uppercase tracking-wider text-background hover:bg-[#d8ff9b] disabled:cursor-not-allowed disabled:opacity-60" disabled={busy} type="submit">{busy ? <LoaderCircle className="animate-spin" size={16} /> : <UploadCloud size={16} />}{busy ? "Processing..." : "Create resource"}</button>
     </form>
   );
 }
@@ -332,13 +332,13 @@ export function PermissionManager({
 
   return (
     <div className="border-t border-line px-5 py-4">
-      <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted"><KeyRound size={13} /> Quyền download</div>
+      <div className="mb-3 flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-muted"><KeyRound size={13} /> Download access</div>
       <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); if (email) void mutate("POST", email); }}>
-        <input className="min-w-0 flex-1 rounded-lg border border-line bg-white px-3 py-2 text-xs outline-none focus:border-moss" onChange={(event) => setEmail(event.target.value)} placeholder="user@example.com" type="email" value={email} />
-        <button className="rounded-lg bg-pine px-3 text-xs font-semibold text-white disabled:opacity-50" disabled={busy || !email} type="submit">Cấp quyền</button>
+        <input className="min-w-0 flex-1 border border-line bg-background px-3 py-2 text-xs text-foreground outline-none focus:border-pine" onChange={(event) => setEmail(event.target.value)} placeholder="user@example.com" type="email" value={email} />
+        <button className="border border-pine bg-pine px-3 font-mono text-[10px] font-bold uppercase text-background disabled:opacity-50" disabled={busy || !email} type="submit">Grant access</button>
       </form>
-      {error && <p className="mt-2 text-[11px] text-red-700">{error}</p>}
-      {emails.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{emails.map((value) => <span className="inline-flex items-center gap-1 rounded-full bg-pine/5 py-1 pl-2.5 pr-1 text-[10px] text-pine" key={value}>{value}<button aria-label={`Thu hồi quyền ${value}`} className="grid size-5 place-items-center rounded-full hover:bg-red-100 hover:text-red-700" disabled={busy} onClick={() => void mutate("DELETE", value)} type="button"><X size={11} /></button></span>)}</div>}
+      {error && <p className="mt-2 text-[11px] text-clay">{error}</p>}
+      {emails.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{emails.map((value) => <span className="inline-flex items-center gap-1 border border-line bg-background py-1 pl-2.5 pr-1 font-mono text-[9px] text-pine" key={value}>{value}<button aria-label={`Revoke access for ${value}`} className="grid size-5 place-items-center text-muted hover:bg-clay/10 hover:text-clay" disabled={busy} onClick={() => void mutate("DELETE", value)} type="button"><X size={11} /></button></span>)}</div>}
     </div>
   );
 }

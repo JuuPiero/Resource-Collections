@@ -24,16 +24,22 @@ export function getDb(): Database {
     databaseGlobal.resourcePool ??
     new Pool({
       connectionString,
-      max: 10,
+      max: getPoolMax(),
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 10_000,
     });
 
   const database = drizzle(pool, { schema });
-  if (process.env.NODE_ENV !== "production") {
-    databaseGlobal.resourcePool = pool;
-    databaseGlobal.resourceDb = database;
-  }
+  databaseGlobal.resourcePool = pool;
+  databaseGlobal.resourceDb = database;
 
   return database;
+}
+
+function getPoolMax() {
+  const max = Number(process.env.DATABASE_POOL_MAX ?? "10");
+  if (!Number.isSafeInteger(max) || max < 1) {
+    throw new Error("DATABASE_POOL_MAX must be a positive integer.");
+  }
+  return max;
 }

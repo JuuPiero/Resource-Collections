@@ -1,9 +1,65 @@
 import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
-import { isAdminEmail, isAllowedGoogleEmail } from "@/lib/authz";
+import Credentials from "next-auth/providers/credentials";
+import { eq } from "drizzle-orm";
+import { getDb } from "@/db";
+import { users } from "@/db/schema";
+import { isAdminEmail, normalizeEmail } from "@/lib/authz";
+import { verifyPassword } from "@/lib/passwords";
+import { ensureBootstrapAdmin } from "@/lib/bootstrap-admin";
+import { z } from "zod";
+
+const credentialsSchema = z.object({
+  email: z.string().trim().email().max(320),
+  password: z.string().min(1).max(128),
+});
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [Google],
+  trustHost: true,
+  providers: [
+    Credentials({
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        const parsed = credentialsSchema.safeParse(credentials);
+        if (!parsed.success) return null;
+
+        if (
+          normalizeEmail(parsed.data.email) ===
+          normalizeEmail(process.env.ADMIN_EMAIL ?? "")
+        ) {
+          await ensureBootstrapAdmin();
+        }
+        const database = getDb();
+        const [user] = await database
+          .select({
+            id: users.id,
+            email: users.email,
+            name: users.name,
+            passwordHash: users.passwordHash,
+            isActive: users.isActive,
+          })
+          .from(users)
+          .where(eq(users.email, normalizeEmail(parsed.data.email)))
+          .limit(1);
+
+        const passwordMatches = await verifyPassword(
+          parsed.data.password,
+          user?.passwordHash,
+        );
+        if (!user || !user.isActive || !passwordMatches) return null;
+
+        const now = new Date();
+        await database
+          .update(users)
+          .set({ lastLoginAt: now, updatedAt: now })
+          .where(eq(users.id, user.id));
+
+        return { id: user.id, email: user.email, name: user.name };
+      },
+    }),
+  ],
   pages: {
     signIn: "/login",
   },
@@ -11,20 +67,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     strategy: "jwt",
   },
   callbacks: {
-    signIn({ account, profile }) {
-      if (account?.provider !== "google") return false;
-      const verified = profile?.email_verified === true;
-      return verified && isAllowedGoogleEmail(profile?.email);
-    },
-    jwt({ token, profile }) {
-      if (profile?.email) token.email = profile.email;
+    jwt({ token, user }) {
+      if (user?.email) token.email = user.email;
+      if (user?.id) token.sub = user.id;
       token.role = isAdminEmail(token.email) ? "admin" : "member";
       return token;
     },
     session({ session, token }) {
       if (session.user) {
         session.user.id = token.sub ?? "";
-        session.user.role = isAdminEmail(session.user.email) ? "admin" : "member";
+        session.user.role = token.role ?? "member";
       }
       return session;
     },

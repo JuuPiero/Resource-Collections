@@ -75,12 +75,34 @@ export async function listResourcesForUser(user: AppUser, isAdmin: boolean) {
       : Promise.resolve([]),
   ]);
 
+  const previewsByResource = new Map<string, typeof previews>();
+  for (const preview of previews) {
+    const resourcePreviews = previewsByResource.get(preview.resourceId);
+    if (resourcePreviews) resourcePreviews.push(preview);
+    else previewsByResource.set(preview.resourceId, [preview]);
+  }
+
+  const fileByResource = new Map<string, (typeof files)[number]>();
+  for (const file of files) {
+    if (!fileByResource.has(file.resourceId)) {
+      fileByResource.set(file.resourceId, file);
+    }
+  }
+
+  const permissionsByResource = new Map<
+    string,
+    { resourceId: string; email: string; expiresAt: Date | null }[]
+  >();
+  for (const permission of permissions) {
+    const resourcePermissions = permissionsByResource.get(permission.resourceId);
+    if (resourcePermissions) resourcePermissions.push(permission);
+    else permissionsByResource.set(permission.resourceId, [permission]);
+  }
+
   return resourceRows.map((resource) => ({
     ...resource,
-    previews: previews.filter((preview) => preview.resourceId === resource.id),
-    file: files.find((file) => file.resourceId === resource.id) ?? null,
-    permissions: permissions.filter(
-      (permission) => permission.resourceId === resource.id,
-    ),
+    previews: previewsByResource.get(resource.id) ?? [],
+    file: fileByResource.get(resource.id) ?? null,
+    permissions: permissionsByResource.get(resource.id) ?? [],
   }));
 }

@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { getDb } from "@/db";
 import { resourcePermissions, resources, users } from "@/db/schema";
 import { isAdminEmail, normalizeEmail } from "@/lib/authz";
-import { ensureAppUser, findOrCreateUserByEmail } from "@/lib/users";
+import { ensureAppUser, findUserByEmail } from "@/lib/users";
 
 const permissionSchema = z.object({
   email: z.string().trim().email().max(320),
@@ -34,7 +34,13 @@ export async function POST(
       .limit(1);
     if (!resource) return Response.json({ error: "Resource not found." }, { status: 404 });
 
-    const targetUser = await findOrCreateUserByEmail(data.email);
+    const targetUser = await findUserByEmail(data.email);
+    if (!targetUser?.isActive || !targetUser.passwordHash) {
+      return Response.json(
+        { error: "The user must create an active account before access can be granted." },
+        { status: 404 },
+      );
+    }
     const [permission] = await getDb()
       .insert(resourcePermissions)
       .values({

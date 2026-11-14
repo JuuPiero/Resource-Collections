@@ -1,7 +1,8 @@
 import Link from "next/link";
 import {
-  ArrowRight,
   Archive,
+  ArrowDownRight,
+  ArrowRight,
   Check,
   Download,
   ImageIcon,
@@ -12,86 +13,113 @@ import {
 const features = [
   {
     icon: Archive,
-    title: "Một nơi cho mọi tài nguyên",
-    copy: "Lưu trữ file ZIP, phiên bản và mô tả trong một thư viện có cấu trúc.",
+    index: "01",
+    title: "One place for every file",
+    copy: "Keep ZIP archives, versions, and release notes together in a searchable library.",
   },
   {
     icon: ShieldCheck,
-    title: "Quyền truy cập rõ ràng",
-    copy: "Public, thành viên hoặc cấp quyền chính xác theo từng địa chỉ email.",
+    index: "02",
+    title: "Access by design",
+    copy: "Choose public, member-only, or invite-only access for every collection.",
   },
   {
     icon: ImageIcon,
-    title: "Preview trực quan",
-    copy: "Ảnh preview được đẩy lên Pixhost và hiển thị ngay trên từng resource.",
+    index: "03",
+    title: "Previews that pop",
+    copy: "Add optimized screenshots so every resource is easy to recognize.",
   },
 ];
 
 export default function Home() {
   return (
     <main className="min-h-screen overflow-hidden">
-      <header className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-6 lg:px-10">
+      <header className="mx-auto flex w-full max-w-7xl items-center justify-between border-b border-line/80 px-6 py-5 lg:px-10">
         <Link className="flex items-center gap-3" href="/">
-          <span className="grid size-10 place-items-center rounded-xl bg-pine text-white shadow-sm">
-            <Archive size={19} strokeWidth={1.8} />
+          <span className="grid size-10 place-items-center border border-pine bg-pine text-background shadow-[3px_3px_0_#617b45]">
+            <Archive size={19} strokeWidth={2} />
           </span>
           <span>
-            <strong className="block text-sm tracking-[-0.02em]">Arcwell</strong>
-            <span className="block text-[10px] uppercase tracking-[0.2em] text-muted">Resource library</span>
+            <strong className="block font-mono text-sm tracking-[0.12em] text-foreground">ARCWELL</strong>
+            <span className="block font-mono text-[9px] uppercase tracking-[0.2em] text-muted">Digital archive / 01</span>
           </span>
         </Link>
-        <Link className="inline-flex items-center gap-2 rounded-full border border-pine/15 bg-white/65 px-4 py-2 text-sm font-medium text-pine backdrop-blur hover:-translate-y-0.5 hover:bg-white" href="/login">
-          Đăng nhập <ArrowRight size={15} />
+        <Link className="inline-flex items-center gap-2 border border-line bg-paper px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wider text-foreground hover:border-pine hover:text-pine" href="/login">
+          Sign in <ArrowRight size={14} />
         </Link>
       </header>
 
-      <section className="mx-auto grid w-full max-w-7xl gap-14 px-6 pb-24 pt-14 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:px-10 lg:pt-20">
+      <section className="mx-auto grid w-full max-w-7xl gap-14 px-6 pb-24 pt-16 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:px-10 lg:pb-28 lg:pt-24">
         <div className="max-w-2xl">
-          <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-pine/10 bg-white/55 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-pine">
-            <LockKeyhole size={13} /> Kho tài nguyên riêng tư
+          <div className="mb-7 inline-flex items-center gap-2 border border-pine/35 bg-pine/10 px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-pine">
+            <LockKeyhole size={13} /> Private archive system <span className="text-clay">/</span> v1.0
           </div>
-          <h1 className="text-balance text-5xl font-semibold leading-[1.03] tracking-[-0.055em] text-pine sm:text-6xl lg:text-[4.7rem]">Tài nguyên đúng người, đúng lúc.</h1>
-          <p className="mt-7 max-w-xl text-base leading-7 text-muted sm:text-lg sm:leading-8">Upload, tổ chức và chia sẻ các bộ tài nguyên ZIP với quyền download được kiểm soát. Gọn gàng cho quản trị viên, đơn giản cho người nhận.</p>
-          <div className="mt-9 flex flex-wrap items-center gap-3">
-            <Link className="inline-flex h-12 items-center gap-3 rounded-xl bg-pine px-5 text-sm font-semibold text-white shadow-[0_14px_35px_rgba(25,58,43,.2)] hover:-translate-y-0.5 hover:bg-[#214a37]" href="/library">
-              Mở thư viện <ArrowRight size={17} />
+          <h1 className="text-balance text-5xl font-semibold uppercase leading-[0.98] tracking-[-0.06em] text-foreground sm:text-6xl lg:text-[4.3rem] xl:text-[5.2rem]">
+            <span className="block whitespace-nowrap">Your files.</span>
+            <span className="block whitespace-nowrap text-pine">Your rules.</span>
+          </h1>
+          <p className="mt-7 max-w-xl text-base leading-7 text-muted sm:text-lg sm:leading-8">
+            A carefully organized home for your digital resources. Upload, manage, and share ZIP collections with access that stays in your hands.
+          </p>
+          <div className="mt-9 flex flex-wrap items-center gap-4">
+            <Link className="inline-flex h-12 items-center gap-3 border border-pine bg-pine px-5 font-mono text-xs font-bold uppercase tracking-wider text-background shadow-[4px_4px_0_#617b45] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_#617b45]" href="/library">
+              Open the library <ArrowRight size={16} />
             </Link>
-            <span className="inline-flex items-center gap-2 px-2 text-xs text-muted"><Check className="text-moss" size={15} /> Đăng nhập an toàn với Google</span>
+            <span className="inline-flex items-center gap-2 px-1 font-mono text-[10px] uppercase tracking-wide text-muted"><Check className="text-pine" size={14} /> Password-protected access</span>
           </div>
         </div>
 
         <div className="relative mx-auto w-full max-w-xl">
-          <div className="absolute -inset-10 -z-10 rounded-full bg-moss/10 blur-3xl" />
-          <div className="rotate-[1.5deg] rounded-[2rem] border border-white/80 bg-paper/90 p-4 shadow-[0_35px_90px_rgba(40,51,44,.14)] backdrop-blur">
-            <div className="relative aspect-[1.45] overflow-hidden rounded-[1.45rem] bg-[#cbd3be]">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_28%_22%,#f5dcc6_0,transparent_28%),linear-gradient(145deg,#91aa83,#344c3d)]" />
-              <div className="absolute inset-x-7 bottom-7 rounded-2xl border border-white/25 bg-[#14261dcc] p-5 text-white backdrop-blur-md">
-                <span className="text-[10px] uppercase tracking-[0.2em] text-white/60">Featured collection</span>
-                <h2 className="mt-2 text-xl font-medium tracking-tight">Botanical UI Kit</h2>
-                <div className="mt-5 flex items-center justify-between border-t border-white/15 pt-4 text-xs text-white/65">
-                  <span>Version 2.4 · 184 MB</span>
-                  <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 font-semibold text-pine"><Download size={13} /> ZIP</span>
+          <div className="absolute -inset-8 -z-10 bg-pine/5 blur-3xl" />
+          <div className="border-2 border-line bg-paper p-4 shadow-[8px_8px_0_rgb(198_241_122_/_16%)] sm:p-5">
+            <div className="flex items-center justify-between border-b border-line pb-4 font-mono text-[10px] uppercase tracking-[0.14em]">
+              <span className="text-muted">Storage node <span className="text-pine">/ 01</span></span>
+              <span className="inline-flex items-center gap-2 text-pine"><span className="size-2 animate-pulse bg-pine" /> Online</span>
+            </div>
+            <div className="relative mt-4 flex aspect-[1.42] flex-col justify-between overflow-hidden border border-line bg-[#202a20] p-5 sm:p-7">
+              <div className="absolute right-6 top-6 grid grid-cols-4 gap-1 opacity-70" aria-hidden="true">
+                {Array.from({ length: 16 }, (_, index) => <span className={`size-2 ${index % 3 === 0 ? "bg-clay" : "bg-pine/70"}`} key={index} />)}
+              </div>
+              <div className="relative">
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-pine">Featured collection</p>
+                <h2 className="mt-3 max-w-xs text-3xl font-semibold uppercase leading-tight tracking-tight text-foreground sm:text-4xl">Botanical<br />UI Kit</h2>
+              </div>
+              <div className="relative border-t border-line pt-4">
+                <div className="flex items-end justify-between gap-4">
+                  <div className="font-mono text-[10px] uppercase leading-5 tracking-wide text-muted">
+                    <p>Release <span className="text-foreground">2.4.0</span></p>
+                    <p>Archive <span className="text-foreground">184 MB</span></p>
+                  </div>
+                  <span className="inline-flex items-center gap-2 border border-pine bg-pine px-3 py-2 font-mono text-[10px] font-bold uppercase text-background"><Download size={13} /> ZIP</span>
                 </div>
               </div>
             </div>
-            <div className="flex items-center justify-between px-3 pb-2 pt-5 text-xs text-muted">
-              <span>3 preview images</span>
-              <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-moss" /> Restricted access</span>
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-4 font-mono text-[9px] uppercase tracking-[0.15em] text-muted">
+              <span>03 preview frames</span>
+              <span className="inline-flex items-center gap-2"><span className="size-2 bg-clay" /> Invite only</span>
             </div>
           </div>
+          <span className="absolute -bottom-5 -left-5 hidden size-12 items-center justify-center border border-clay bg-background font-mono text-xl text-clay sm:flex"><ArrowDownRight size={22} /></span>
         </div>
       </section>
 
-      <section className="border-t border-pine/10 bg-white/35">
-        <div className="mx-auto grid w-full max-w-7xl gap-px px-6 py-16 md:grid-cols-3 lg:px-10">
-          {features.map(({ icon: Icon, title, copy }) => (
-            <article className="border-pine/10 py-7 md:border-l md:px-8 first:md:border-l-0" key={title}>
-              <Icon className="mb-5 text-clay" size={22} strokeWidth={1.7} />
-              <h2 className="font-semibold tracking-tight text-pine">{title}</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">{copy}</p>
+      <section className="border-t border-line bg-background/80">
+        <div className="mx-auto grid w-full max-w-7xl gap-px px-6 py-12 md:grid-cols-3 lg:px-10 lg:py-16">
+          {features.map(({ icon: Icon, index, title, copy }) => (
+            <article className="group border border-line bg-paper/70 p-6 transition-colors hover:border-pine/50 sm:p-8" key={index}>
+              <div className="flex items-center justify-between">
+                <Icon className="text-clay" size={21} strokeWidth={1.8} />
+                <span className="font-mono text-[10px] text-muted">SYS_{index}</span>
+              </div>
+              <h2 className="mt-8 font-mono text-sm font-bold uppercase tracking-wide text-pine">{title}</h2>
+              <p className="mt-3 text-sm leading-6 text-muted">{copy}</p>
             </article>
           ))}
         </div>
+        <footer className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 border-t border-line px-6 py-5 font-mono text-[9px] uppercase tracking-[0.15em] text-muted lg:px-10">
+          <span>Arcwell Resource Library</span>
+          <span>Built for the keepers of good things</span>
+        </footer>
       </section>
     </main>
   );

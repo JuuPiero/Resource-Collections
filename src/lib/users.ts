@@ -10,7 +10,7 @@ export type AppUser = typeof users.$inferSelect;
 
 export async function ensureAppUser(session: Session): Promise<AppUser> {
   const email = session.user.email;
-  if (!email) throw new Error("The Google account did not provide an email address.");
+  if (!email) throw new Error("The signed-in account did not provide an email address.");
 
   const normalizedEmail = normalizeEmail(email);
   const now = new Date();
@@ -35,19 +35,6 @@ export async function ensureAppUser(session: Session): Promise<AppUser> {
     .returning();
 
   if (!user?.isActive) throw new Error("This account has been disabled.");
-  return user;
-}
-
-export async function findOrCreateUserByEmail(email: string) {
-  const normalizedEmail = normalizeEmail(email);
-  const [user] = await getDb()
-    .insert(users)
-    .values({ email: normalizedEmail })
-    .onConflictDoUpdate({
-      target: users.email,
-      set: { updatedAt: new Date() },
-    })
-    .returning();
   return user;
 }
 
