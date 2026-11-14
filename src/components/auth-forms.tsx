@@ -40,7 +40,11 @@ export function LoginForm() {
         redirect: false,
       });
       if (result?.error) {
-        setError("Email or password is incorrect, or this account is disabled.");
+        setError(
+          result.error === "CredentialsSignin"
+            ? "Email or password is incorrect, or this account is disabled."
+            : "Sign-in is unavailable. Check ADMIN_EMAIL, ADMIN_PASSWORD (12-128 characters), AUTH_SECRET, and run the database migration.",
+        );
         return;
       }
       router.replace("/library");
