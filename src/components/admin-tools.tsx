@@ -38,6 +38,21 @@ type WorkerResult = {
   type?: string;
 };
 
+const archiveTypes = new Set([
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/octet-stream",
+]);
+const previewTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const previewExtensions = /\.(jpe?g|png|webp|gif)$/i;
+
+function isArchiveFile(file: File) {
+  return (
+    file.name.toLowerCase().endsWith(".zip") &&
+    (!file.type || archiveTypes.has(file.type))
+  );
+}
+
 function createMediaWorker() {
   const worker = new Worker("/media-worker.js");
   let nextId = 0;
@@ -99,6 +114,84 @@ async function responseJson<T>(response: Response): Promise<T> {
   const payload = (await response.json()) as T & { error?: string };
   if (!response.ok) throw new Error(payload.error ?? `Request failed (HTTP ${response.status}).`);
   return payload;
+}
+
+async function uploadArchive(
+  archive: File,
+  processor: ReturnType<typeof createMediaWorker>,
+  setProgress: (progress: string) => void,
+): Promise<ArchiveDescriptor> {
+  setProgress("Calculating the archive SHA-256 in your browser...");
+  const hashResult = await processor.request("hash", archive);
+  if (!hashResult.sha256) throw new Error("Browser could not hash the archive.");
+
+  const prepareResponse = await fetch("/api/uploads/archive", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      originalName: archive.name,
+      mimeType: archive.type || "application/zip",
+      size: archive.size,
+      sha256: hashResult.sha256,
+    }),
+  });
+  const prepared = await responseJson<
+    | {
+        strategy: "direct";
+        archive: ArchiveDescriptor;
+        uploadUrl: string;
+        headers: Record<string, string>;
+      }
+    | { strategy: "proxy"; uploadUrl: string }
+  >(prepareResponse);
+
+  if (prepared.strategy === "direct") {
+    setProgress("Uploading ZIP directly to object storage: 0%");
+    await uploadWithProgress(prepared.uploadUrl, archive, prepared.headers, (percent) => {
+      setProgress(`Uploading ZIP directly to object storage: ${percent}%`);
+    });
+    return prepared.archive;
+  }
+
+  setProgress("Uploading ZIP through the local development server...");
+  const localForm = new FormData();
+  localForm.append("archive", archive);
+  localForm.append("sha256", hashResult.sha256);
+  const response = await fetch(prepared.uploadUrl, { method: "POST", body: localForm });
+  return (await responseJson<{ archive: ArchiveDescriptor }>(response)).archive;
+}
+
+async function uploadPreviews(
+  files: File[],
+  processor: ReturnType<typeof createMediaWorker>,
+  setProgress: (progress: string) => void,
+): Promise<HostedPreview[]> {
+  if (!files.length) return [];
+
+  setProgress("Resizing and compressing preview images in your browser...");
+  const optimized: File[] = [];
+  for (const file of files) {
+    try {
+      const result = await processor.request("compress", file);
+      const blob = result.blob ?? file;
+      optimized.push(
+        new File([blob], result.name ?? file.name, {
+          type: result.type || blob.type || file.type,
+        }),
+      );
+    } catch {
+      optimized.push(file);
+    }
+  }
+
+  setProgress("Uploading optimized previews to Pixhost...");
+  const previewForm = new FormData();
+  for (const file of optimized) previewForm.append("previews", file);
+  const response = await fetch("/api/uploads/previews", {
+    method: "POST",
+    body: previewForm,
+  });
+  return (await responseJson<{ previews: HostedPreview[] }>(response)).previews;
 }
 
 export function UploadResourceForm() {
@@ -192,77 +285,11 @@ export function UploadResourceForm() {
     const processor = createMediaWorker();
     let completedArchive: ArchiveDescriptor | null = null;
     try {
-      setProgress("Calculating the archive SHA-256 in your browser...");
-      const hashResult = await processor.request("hash", archive);
-      if (!hashResult.sha256) throw new Error("Browser could not hash the archive.");
-
-      const prepareResponse = await fetch("/api/uploads/archive", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          originalName: archive.name,
-          mimeType: archive.type || "application/zip",
-          size: archive.size,
-          sha256: hashResult.sha256,
-        }),
-      });
-      const prepared = await responseJson<
-        | {
-            strategy: "direct";
-            archive: ArchiveDescriptor;
-            uploadUrl: string;
-            headers: Record<string, string>;
-          }
-        | { strategy: "proxy"; uploadUrl: string }
-      >(prepareResponse);
-
-      const archiveUpload = (async (): Promise<ArchiveDescriptor> => {
-        if (prepared.strategy === "direct") {
-          setProgress("Uploading ZIP directly to object storage: 0%");
-          await uploadWithProgress(prepared.uploadUrl, archive, prepared.headers, (percent) => {
-            setProgress(`Uploading ZIP directly to object storage: ${percent}%`);
-          });
-          completedArchive = prepared.archive;
-          return prepared.archive;
-        }
-
-        setProgress("Uploading ZIP through the local development server...");
-        const localForm = new FormData();
-        localForm.append("archive", archive);
-        localForm.append("sha256", hashResult.sha256!);
-        const response = await fetch(prepared.uploadUrl, { method: "POST", body: localForm });
-        const stored = (await responseJson<{ archive: ArchiveDescriptor }>(response)).archive;
+      const archiveUpload = uploadArchive(archive, processor, setProgress).then((stored) => {
         completedArchive = stored;
         return stored;
-      })();
-
-      const previewUpload = (async (): Promise<HostedPreview[]> => {
-        if (!previewFiles.length) return [];
-        setProgress("Resizing and compressing preview images in your browser...");
-        const optimized: File[] = [];
-        for (const file of previewFiles) {
-          try {
-            const result = await processor.request("compress", file);
-            const blob = result.blob ?? file;
-            optimized.push(
-              new File([blob], result.name ?? file.name, {
-                type: result.type || blob.type || file.type,
-              }),
-            );
-          } catch {
-            optimized.push(file);
-          }
-        }
-
-        setProgress("Uploading optimized previews to Pixhost...");
-        const previewForm = new FormData();
-        for (const file of optimized) previewForm.append("previews", file);
-        const response = await fetch("/api/uploads/previews", {
-          method: "POST",
-          body: previewForm,
-        });
-        return (await responseJson<{ previews: HostedPreview[] }>(response)).previews;
-      })();
+      });
+      const previewUpload = uploadPreviews(previewFiles, processor, setProgress);
 
       const [archiveResult, previewResult] = await Promise.allSettled([
         archiveUpload,
@@ -394,15 +421,126 @@ export function ResourceManager({
   onDeleted?: () => void;
 }) {
   const router = useRouter();
+  const archiveInputRef = useRef<HTMLInputElement>(null);
+  const previewInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [progress, setProgress] = useState("");
+  const [archiveName, setArchiveName] = useState("");
+  const [previewNames, setPreviewNames] = useState<string[]>([]);
+  const [draggingArchive, setDraggingArchive] = useState(false);
+  const [draggingPreviews, setDraggingPreviews] = useState(false);
+
+  function selectReplacementArchive(files: FileList | File[]) {
+    const archive = files[0];
+    if (!archive) return;
+    if (!isArchiveFile(archive)) {
+      if (archiveInputRef.current) archiveInputRef.current.value = "";
+      setArchiveName("");
+      setMessage("Choose a ZIP archive.");
+      return;
+    }
+    if (archiveInputRef.current) {
+      const transfer = new DataTransfer();
+      transfer.items.add(archive);
+      archiveInputRef.current.files = transfer.files;
+    }
+    setArchiveName(archive.name);
+    setMessage("");
+  }
+
+  function selectReplacementPreviews(files: FileList | File[]) {
+    const selected = Array.from(files);
+    if (selected.length > 8) {
+      if (previewInputRef.current) previewInputRef.current.value = "";
+      setPreviewNames([]);
+      setMessage("Select no more than 8 preview images.");
+      return;
+    }
+    if (
+      selected.some(
+        (file) =>
+          (file.type && !previewTypes.has(file.type)) ||
+          (!file.type && !previewExtensions.test(file.name)),
+      )
+    ) {
+      if (previewInputRef.current) previewInputRef.current.value = "";
+      setPreviewNames([]);
+      setMessage("Choose JPG, PNG, WebP, or GIF images.");
+      return;
+    }
+    if (previewInputRef.current) {
+      const transfer = new DataTransfer();
+      selected.forEach((file) => transfer.items.add(file));
+      previewInputRef.current.files = transfer.files;
+    }
+    setPreviewNames(selected.map((file) => file.name));
+    setMessage("");
+  }
+
+  function handleReplacementDrop(
+    event: DragEvent<HTMLLabelElement>,
+    selectFiles: (files: FileList) => void,
+    setDragging: (dragging: boolean) => void,
+  ) {
+    event.preventDefault();
+    setDragging(false);
+    if (event.dataTransfer.files.length) selectFiles(event.dataTransfer.files);
+  }
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
+    const archiveValue = formData.get("archive");
+    const archive =
+      archiveValue instanceof File && archiveValue.size > 0 ? archiveValue : null;
+    const previewFiles = formData
+      .getAll("previews")
+      .filter((value): value is File => value instanceof File && value.size > 0);
+    if (archive && !isArchiveFile(archive)) {
+      setMessage("Choose a ZIP archive.");
+      return;
+    }
+    if (previewFiles.length > 8) {
+      setMessage("Select no more than 8 preview images.");
+      return;
+    }
+    if (
+      previewFiles.some(
+        (file) =>
+          (file.type && !previewTypes.has(file.type)) ||
+          (!file.type && !previewExtensions.test(file.name)),
+      )
+    ) {
+      setMessage("Choose JPG, PNG, WebP, or GIF images.");
+      return;
+    }
+
     setBusy(true);
     setMessage("");
+    setProgress("");
+    const processor = archive || previewFiles.length ? createMediaWorker() : null;
+    let uploadedArchive: ArchiveDescriptor | null = null;
+    let cleanupUploadedArchive = true;
     try {
+      const archiveUpload = archive && processor
+        ? uploadArchive(archive, processor, setProgress).then((stored) => {
+            uploadedArchive = stored;
+            return stored;
+          })
+        : Promise.resolve(undefined);
+      const previewUpload = previewFiles.length && processor
+        ? uploadPreviews(previewFiles, processor, setProgress)
+        : Promise.resolve(undefined);
+      const [archiveResult, previewResult] = await Promise.allSettled([
+        archiveUpload,
+        previewUpload,
+      ]);
+      if (archiveResult.status === "rejected") throw archiveResult.reason;
+      if (previewResult.status === "rejected") throw previewResult.reason;
+
+      setProgress("Saving resource details and replacing selected files...");
+      cleanupUploadedArchive = false;
       const response = await fetch(`/api/resources/${item.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -413,16 +551,44 @@ export function ResourceManager({
           category: formData.get("category"),
           status: formData.get("status"),
           accessLevel: formData.get("accessLevel"),
+          ...(archiveResult.value ? { archive: archiveResult.value } : {}),
+          ...(previewResult.value ? { previews: previewResult.value } : {}),
         }),
       });
-      const payload = (await response.json()) as { error?: string };
-      if (!response.ok) throw new Error(payload.error ?? "Could not update resource.");
+      if (!response.ok) {
+        cleanupUploadedArchive = true;
+      }
+      const payload = await responseJson<{ warning?: string }>(response);
+      uploadedArchive = null;
+      if (payload.warning) window.alert(payload.warning);
+      setProgress("");
       setMessage("Resource updated.");
       router.refresh();
       onSaved?.();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not update resource.");
+      let errorMessage =
+        error instanceof Error ? error.message : "Could not update resource.";
+      if (uploadedArchive && cleanupUploadedArchive) {
+        try {
+          await responseJson(
+            await fetch("/api/uploads/archive", {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(uploadedArchive),
+            }),
+          );
+        } catch (cleanupError) {
+          const cleanupMessage =
+            cleanupError instanceof Error
+              ? cleanupError.message
+              : "Could not clean up the uploaded ZIP.";
+          errorMessage = `${errorMessage} ${cleanupMessage}`;
+        }
+      }
+      setProgress("");
+      setMessage(errorMessage);
     } finally {
+      processor?.terminate();
       setBusy(false);
     }
   }
@@ -480,8 +646,78 @@ export function ResourceManager({
             Description
             <textarea className="min-h-20 rounded-md border border-white/10 bg-[#111318] px-3 py-2 text-xs text-white" defaultValue={item.description ?? ""} maxLength={5000} name="description" />
           </label>
+          <label
+            className={`group grid cursor-pointer gap-1.5 rounded-md border border-dashed p-3 text-[10px] text-white/55 transition-colors sm:col-span-2 ${draggingArchive ? "border-[#a99eff] bg-[#6c5ce7]/10" : "border-white/10 hover:bg-white/[.025]"}`}
+            onDragLeave={() => setDraggingArchive(false)}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setDraggingArchive(true);
+            }}
+            onDrop={(event) =>
+              handleReplacementDrop(event, selectReplacementArchive, setDraggingArchive)
+            }
+          >
+            Replace ZIP archive (optional)
+            <span className="text-[9px] text-white/40">
+              {item.file
+                ? `Current: ${item.file.originalName} · ${item.file.size.toLocaleString()} bytes`
+                : "No ZIP is currently attached."}
+            </span>
+            <span className="flex min-h-10 items-center gap-2 rounded-md bg-[#111318] px-3 text-white/65">
+              <UploadCloud size={14} />
+              {archiveName || "Choose or drop a ZIP. Leave empty to keep the current file."}
+            </span>
+            <input
+              accept=".zip,application/zip"
+              className="sr-only"
+              disabled={busy}
+              name="archive"
+              onChange={(event) => selectReplacementArchive(event.target.files ?? [])}
+              ref={archiveInputRef}
+              type="file"
+            />
+          </label>
+          <label
+            className={`group grid cursor-pointer gap-1.5 rounded-md border border-dashed p-3 text-[10px] text-white/55 transition-colors sm:col-span-2 ${draggingPreviews ? "border-[#a99eff] bg-[#6c5ce7]/10" : "border-white/10 hover:bg-white/[.025]"}`}
+            onDragLeave={() => setDraggingPreviews(false)}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setDraggingPreviews(true);
+            }}
+            onDrop={(event) =>
+              handleReplacementDrop(event, selectReplacementPreviews, setDraggingPreviews)
+            }
+          >
+            Replace preview images (optional, up to 8)
+            <span className="text-[9px] text-white/40">
+              Current gallery: {item.previews.length} image{item.previews.length === 1 ? "" : "s"}.
+              New images replace the entire gallery; leave empty to keep it.
+            </span>
+            <span className="flex min-h-10 items-center gap-2 rounded-md bg-[#111318] px-3 text-white/65">
+              <ImagePlus size={14} />
+              {previewNames.length
+                ? `${previewNames.length} replacement image${previewNames.length === 1 ? "" : "s"} selected`
+                : "Choose or drop JPG, PNG, WebP, or GIF files"}
+            </span>
+            <input
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="sr-only"
+              disabled={busy}
+              multiple
+              name="previews"
+              onChange={(event) => selectReplacementPreviews(event.target.files ?? [])}
+              ref={previewInputRef}
+              type="file"
+            />
+          </label>
+          {progress && (
+            <p className="flex items-center gap-2 text-[10px] text-[#c5beff]" role="status">
+              <LoaderCircle className="animate-spin" size={13} />
+              {progress}
+            </p>
+          )}
           <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
-            <button className="inline-flex h-9 items-center gap-2 rounded-md bg-[#6c5ce7] px-3 text-[10px] font-bold text-white disabled:opacity-50" disabled={busy} type="submit"><Save size={13} /> Save changes</button>
+            <button className="inline-flex h-9 items-center gap-2 rounded-md bg-[#6c5ce7] px-3 text-[10px] font-bold text-white disabled:opacity-50" disabled={busy} type="submit"><Save size={13} /> {busy ? "Saving..." : "Save changes"}</button>
             <button className="inline-flex h-9 items-center gap-2 rounded-md border border-rose-400/30 px-3 text-[10px] font-bold text-rose-300 hover:bg-rose-400/10 disabled:opacity-50" disabled={busy} onClick={() => void remove()} type="button"><Trash2 size={13} /> Delete resource</button>
             {message && <span className="text-[10px] text-amber-200" role="status">{message}</span>}
           </div>

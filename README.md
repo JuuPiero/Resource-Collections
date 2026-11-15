@@ -2,7 +2,7 @@
 
 PiaStore là catalog tài nguyên cá nhân theo concept Unity/Cocos Asset Store. Mọi khách đều xem được danh sách, mô tả và preview của tài nguyên đã publish; quyền tải ZIP vẫn theo access level và license.
 
-Trong dashboard, admin có thể quản lý tài nguyên qua bảng tại **Assets** và quản lý tài khoản qua bảng **Users** (bật/tắt tài khoản; email admin được cấu hình sẽ được bảo vệ). Trang chi tiết tài nguyên hỗ trợ slider preview, phóng to ảnh và điều hướng bằng phím mũi tên. Khi đăng tài nguyên, có thể kéo thả file ZIP và tối đa 8 ảnh preview vào vùng chọn file.
+Trong dashboard, admin có thể quản lý tài nguyên qua bảng tại **Assets** và quản lý tài khoản qua bảng **Users** (bật/tắt tài khoản; email admin được cấu hình sẽ được bảo vệ). Trang chi tiết tài nguyên hỗ trợ slider preview, phóng to ảnh và điều hướng bằng phím mũi tên. Khi đăng tài nguyên, có thể kéo thả file ZIP và tối đa 8 ảnh preview; khi chỉnh sửa asset, admin cũng có thể kéo thả ZIP hoặc ảnh mới để thay file hiện có (để trống để giữ nguyên).
 
 ## Kiến trúc
 
