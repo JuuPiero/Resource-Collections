@@ -66,7 +66,7 @@ export function AssetGallery({
                 fill
                 priority
                 sizes="(max-width: 1024px) 100vw, 65vw"
-                src={activePreview.thumbUrl ?? activePreview.imageUrl}
+                src={activePreview.imageUrl}
               />
               <span className="absolute bottom-4 right-4 inline-flex items-center gap-2 rounded-lg bg-[#111318d9] px-3 py-2 text-[10px] font-semibold text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                 <Maximize2 size={13} /> Click to enlarge
