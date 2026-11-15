@@ -5,10 +5,7 @@ import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import { isAdminEmail, normalizeEmail } from "@/lib/authz";
 import { verifyEnvironmentPassword, verifyPassword } from "@/lib/passwords";
-import {
-  ensureBootstrapAdmin,
-  getBootstrapAdminCredentials,
-} from "@/lib/bootstrap-admin";
+import { getAdminCredentials } from "@/lib/admin-config";
 import { z } from "zod";
 
 const credentialsSchema = z.object({
@@ -29,10 +26,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!parsed.success) return null;
 
         const submittedEmail = normalizeEmail(parsed.data.email);
-        const adminCredentials = getBootstrapAdminCredentials();
-        const signingInAsAdmin = isAdminEmail(submittedEmail);
+        const adminCredentials = getAdminCredentials();
 
-        if (signingInAsAdmin) {
+        if (isAdminEmail(submittedEmail)) {
           if (
             !adminCredentials ||
             !verifyEnvironmentPassword(
@@ -42,8 +38,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           ) {
             return null;
           }
-          await ensureBootstrapAdmin();
+          return {
+            id: `admin:${submittedEmail}`,
+            email: submittedEmail,
+            name: "Administrator",
+          };
         }
+
         const database = getDb();
         const [user] = await database
           .select({
@@ -57,10 +58,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           .where(eq(users.email, submittedEmail))
           .limit(1);
 
-        const passwordMatches = signingInAsAdmin
-          ? true
-          : await verifyPassword(parsed.data.password, user?.passwordHash);
-        if (!user || !user.isActive || !passwordMatches) return null;
+        if (
+          !user ||
+          !user.isActive ||
+          !(await verifyPassword(parsed.data.password, user.passwordHash))
+        ) {
+          return null;
+        }
 
         const now = new Date();
         await database

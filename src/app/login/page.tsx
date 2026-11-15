@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft, Archive, ShieldCheck } from "lucide-react";
 import { LoginForm } from "@/components/auth-forms";
 import { auth } from "@/auth";
-import { getBootstrapAdminIssue } from "@/lib/bootstrap-admin";
+import { getAdminConfigIssue } from "@/lib/admin-config";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -16,7 +16,7 @@ export default async function LoginPage({
   const session = await auth();
   if (session) redirect("/library");
   const { registered } = await searchParams;
-  const adminIssue = getBootstrapAdminIssue();
+  const adminIssue = getAdminConfigIssue();
 
   return (
     <main className="grid min-h-screen place-items-center px-6 py-16">

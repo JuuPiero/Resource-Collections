@@ -43,7 +43,7 @@ export function LoginForm() {
         setError(
           result.error === "CredentialsSignin"
             ? "Email or password is incorrect, or this account is disabled."
-            : "Sign-in is unavailable. Check ADMIN_EMAIL, ADMIN_PASSWORD (12-128 characters), AUTH_SECRET, and run the database migration.",
+            : "Sign-in is unavailable. Check admin configuration and database availability for member accounts.",
         );
         return;
       }

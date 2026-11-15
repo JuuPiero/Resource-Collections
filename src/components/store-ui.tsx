@@ -7,8 +7,10 @@ import {
   Download,
   Gauge,
   LogOut,
+  PackageCheck,
   PackageOpen,
   ShieldCheck,
+  Users,
 } from "lucide-react";
 import { signOut } from "@/auth";
 import type { ResourceListItem } from "@/lib/resources";
@@ -38,7 +40,7 @@ export function StoreHeader({
   isAdmin,
   active,
 }: {
-  session: Session;
+  session: Session | null;
   isAdmin: boolean;
   active?: "store" | "dashboard";
 }) {
@@ -61,16 +63,25 @@ export function StoreHeader({
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
-          <div className="hidden text-right md:block">
-            <p className="max-w-48 truncate text-xs font-semibold text-white">{session.user.name ?? session.user.email}</p>
-            <p className="text-[9px] uppercase tracking-[.14em] text-white/40">{isAdmin ? "Store owner" : "Licensed member"}</p>
-          </div>
-          <span className="grid size-9 place-items-center rounded-full border border-white/10 bg-white/5 text-xs font-bold text-[#a99eff]">
-            {(session.user.name ?? session.user.email ?? "U").slice(0, 1).toUpperCase()}
-          </span>
-          <form action={async () => { "use server"; await signOut({ redirectTo: "/" }); }}>
-            <button aria-label="Sign out" className="grid size-9 place-items-center rounded-lg text-white/45 hover:bg-white/5 hover:text-white" type="submit"><LogOut size={16} /></button>
-          </form>
+          {session ? (
+            <>
+              <div className="hidden text-right md:block">
+                <p className="max-w-48 truncate text-xs font-semibold text-white">{session.user.name ?? session.user.email}</p>
+                <p className="text-[9px] uppercase tracking-[.14em] text-white/40">{isAdmin ? "Store owner" : "Licensed member"}</p>
+              </div>
+              <span className="grid size-9 place-items-center rounded-full border border-white/10 bg-white/5 text-xs font-bold text-[#a99eff]">
+                {(session.user.name ?? session.user.email ?? "U").slice(0, 1).toUpperCase()}
+              </span>
+              <form action={async () => { "use server"; await signOut({ redirectTo: "/" }); }}>
+                <button aria-label="Sign out" className="grid size-9 place-items-center rounded-lg text-white/45 hover:bg-white/5 hover:text-white" type="submit"><LogOut size={16} /></button>
+              </form>
+            </>
+          ) : (
+            <>
+              <Link className="rounded-lg px-3 py-2 text-xs font-semibold text-white/70 hover:bg-white/5 hover:text-white" href="/login">Sign in</Link>
+              <Link className="rounded-lg bg-[#6c5ce7] px-3 py-2 text-xs font-semibold text-white hover:bg-[#5b4bd6]" href="/register">Create account</Link>
+            </>
+          )}
         </div>
       </div>
     </header>
@@ -95,24 +106,62 @@ export function AssetCard({ item }: { item: ResourceListItem }) {
             <Link className="line-clamp-1 text-sm font-bold text-[#20222c] hover:text-[#6c5ce7]" href={`/assets/${item.slug}`}>{item.title}</Link>
             <p className="mt-1 text-[10px] font-medium text-[#8a8d9b]">PiaStore {item.version ? `· v${item.version}` : ""}</p>
           </div>
-          <span className="shrink-0 rounded-md bg-[#f0eefc] px-2 py-1 text-[9px] font-bold uppercase text-[#6c5ce7]">Owned</span>
+          <span className="shrink-0 rounded-md bg-[#f0eefc] px-2 py-1 text-[9px] font-bold uppercase text-[#6c5ce7]">{item.canDownload ? "Available" : "Access required"}</span>
         </div>
         <p className="mt-3 line-clamp-2 min-h-9 text-xs leading-[1.55] text-[#686b78]">{item.description || "A private digital asset from your licensed collection."}</p>
         <div className="mt-4 flex items-center justify-between border-t border-[#ececf1] pt-3">
           <span className="inline-flex items-center gap-1.5 text-[10px] text-[#858895]"><ShieldCheck size={12} /> {item.accessLevel === "restricted" ? "Private license" : item.accessLevel}</span>
           <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#343641]"><Download size={12} /> {item.file ? formatBytes(item.file.size) : "ZIP"}</span>
         </div>
+        {item.canDownload ? (
+          <a className="mt-4 flex h-10 items-center justify-center gap-2 rounded-lg bg-[#6c5ce7] text-xs font-bold text-white hover:bg-[#5b4bd6]" href={`/api/resources/${item.id}/download`}>
+            <Download size={14} /> Download
+          </a>
+        ) : (
+          <button className="mt-4 flex h-10 w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-[#e6e7eb] text-xs font-bold text-[#999ba5]" disabled type="button">
+            <Download size={14} /> Download locked
+          </button>
+        )}
       </div>
     </article>
   );
 }
 
-export function DashboardNav() {
+export function DashboardNav({
+  active = "overview",
+}: {
+  active?: "overview" | "assets" | "users";
+}) {
   return (
-    <aside className="hidden w-56 shrink-0 border-r border-white/8 bg-[#151720] p-4 lg:block">
-      <p className="px-3 pb-3 pt-2 text-[9px] font-bold uppercase tracking-[.16em] text-white/30">Management</p>
-      <Link className="flex items-center gap-3 rounded-lg bg-[#6c5ce7] px-3 py-2.5 text-xs font-semibold text-white" href="/dashboard"><Gauge size={15} /> Overview</Link>
-      <Link className="mt-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-xs font-medium text-white/55 hover:bg-white/5 hover:text-white" href="/library"><PackageOpen size={15} /> Asset storefront <ChevronRight className="ml-auto" size={13} /></Link>
+    <aside className="w-full shrink-0 border-b border-white/8 bg-[#151720] p-3 lg:w-56 lg:border-b-0 lg:border-r lg:p-4">
+      <p className="hidden px-3 pb-3 pt-2 text-[9px] font-bold uppercase tracking-[.16em] text-white/30 lg:block">Management</p>
+      <div className="flex flex-wrap gap-1 lg:block">
+        <DashboardNavLink active={active === "overview"} href="/dashboard" icon={Gauge} label="Overview" />
+        <DashboardNavLink active={active === "assets"} href="/dashboard/assets" icon={PackageCheck} label="Assets" />
+        <DashboardNavLink active={active === "users"} href="/dashboard/users" icon={Users} label="Users" />
+        <Link className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-xs font-medium text-white/55 hover:bg-white/5 hover:text-white lg:mt-4" href="/library"><PackageOpen size={15} /> Asset storefront <ChevronRight className="ml-auto" size={13} /></Link>
+      </div>
     </aside>
+  );
+}
+
+function DashboardNavLink({
+  active,
+  href,
+  icon: Icon,
+  label,
+}: {
+  active: boolean;
+  href: string;
+  icon: typeof Gauge;
+  label: string;
+}) {
+  return (
+    <Link
+      className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-xs font-semibold lg:mb-1 lg:gap-3 ${active ? "bg-[#6c5ce7] text-white" : "text-white/55 hover:bg-white/5 hover:text-white"}`}
+      href={href}
+    >
+      <Icon size={15} /> {label}
+    </Link>
   );
 }

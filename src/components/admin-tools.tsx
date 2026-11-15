@@ -382,7 +382,17 @@ export function UploadResourceForm() {
   );
 }
 
-export function ResourceManager({ item }: { item: ResourceListItem }) {
+export function ResourceManager({
+  item,
+  defaultOpen = false,
+  onSaved,
+  onDeleted,
+}: {
+  item: ResourceListItem;
+  defaultOpen?: boolean;
+  onSaved?: () => void;
+  onDeleted?: () => void;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -409,6 +419,7 @@ export function ResourceManager({ item }: { item: ResourceListItem }) {
       if (!response.ok) throw new Error(payload.error ?? "Could not update resource.");
       setMessage("Resource updated.");
       router.refresh();
+      onSaved?.();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not update resource.");
     } finally {
@@ -428,6 +439,7 @@ export function ResourceManager({ item }: { item: ResourceListItem }) {
       if (!response.ok) throw new Error(payload.error ?? "Could not delete resource.");
       if (payload.warning) window.alert(payload.warning);
       router.refresh();
+      onDeleted?.();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not delete resource.");
     } finally {
@@ -437,7 +449,7 @@ export function ResourceManager({ item }: { item: ResourceListItem }) {
 
   return (
     <div className="border-t border-white/8 p-4">
-      <details>
+      <details open={defaultOpen}>
         <summary className="flex cursor-pointer list-none items-center gap-2 text-[10px] font-bold text-[#a99eff] hover:text-white">
           <Pencil size={13} /> Edit resource details
         </summary>

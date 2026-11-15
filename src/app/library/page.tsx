@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import {
   Box,
   ChevronRight,
@@ -28,13 +27,12 @@ export default async function LibraryPage({
   searchParams: Promise<{ q?: string; category?: string }>;
 }) {
   const session = await auth();
-  if (!session) redirect("/login");
-  const isAdmin = isAdminEmail(session.user.email);
+  const isAdmin = isAdminEmail(session?.user?.email);
   const { q = "", category = "all" } = await searchParams;
 
   let items;
   try {
-    const user = await ensureAppUser(session);
+    const user = session ? await ensureAppUser(session) : null;
     items = await listResourcesForUser(user, isAdmin);
   } catch (error) {
     return <SetupError message={error instanceof Error ? error.message : "The database is unavailable."} />;
@@ -61,9 +59,9 @@ export default async function LibraryPage({
       <section className="border-b border-[#dedfe6] bg-[#1d202a] text-white">
         <div className="mx-auto grid max-w-[1440px] gap-8 px-5 py-10 lg:grid-cols-[1fr_420px] lg:px-8 lg:py-14">
           <div className="max-w-2xl">
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#8b7cf6]/30 bg-[#8b7cf6]/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.14em] text-[#bdb5ff]"><Sparkles size={12} /> Your licensed collection</span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#8b7cf6]/30 bg-[#8b7cf6]/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.14em] text-[#bdb5ff]"><Sparkles size={12} /> PiaStore public catalog</span>
             <h1 className="mt-5 text-4xl font-bold tracking-[-.045em] sm:text-5xl">Assets built for your next idea.</h1>
-            <p className="mt-4 max-w-xl text-sm leading-6 text-white/55">A private marketplace of tools, templates and production-ready resources shared directly with you.</p>
+            <p className="mt-4 max-w-xl text-sm leading-6 text-white/55">Explore the complete published catalog. Sign in or request access to download licensed resources.</p>
             <form className="mt-7 flex max-w-xl overflow-hidden rounded-lg border border-white/10 bg-white" method="get">
               <span className="grid w-12 place-items-center text-[#8b8e9a]"><Search size={17} /></span>
               <input className="h-12 min-w-0 flex-1 bg-transparent pr-3 text-sm text-[#242630] outline-none placeholder:text-[#a4a6b0]" defaultValue={q} name="q" placeholder="Search assets, tools, templates..." />
@@ -90,7 +88,7 @@ export default async function LibraryPage({
           <div className="mt-7 rounded-xl border border-[#dedfe6] bg-white p-4">
             <Box className="text-[#6c5ce7]" size={19} />
             <p className="mt-3 text-xs font-bold">Personal licenses</p>
-            <p className="mt-1.5 text-[11px] leading-5 text-[#777a87]">Only assets shared with your account appear in this store.</p>
+            <p className="mt-1.5 text-[11px] leading-5 text-[#777a87]">Browse every published resource. Download access depends on its license.</p>
           </div>
         </aside>
 
@@ -98,7 +96,7 @@ export default async function LibraryPage({
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#9a9ca8]">{category === "all" ? "All categories" : categoryLabels[category] ?? "Assets"}</p>
-              <h2 className="mt-1 text-xl font-bold tracking-tight">{query ? `Results for “${q}”` : "Available assets"}</h2>
+              <h2 className="mt-1 text-xl font-bold tracking-tight">{query ? `Results for “${q}”` : "Published assets"}</h2>
             </div>
             <span className="inline-flex items-center gap-2 rounded-lg border border-[#dedfe6] bg-white px-3 py-2 text-[10px] font-semibold text-[#777a87]"><LayoutGrid size={13} /> {filtered.length} items</span>
           </div>

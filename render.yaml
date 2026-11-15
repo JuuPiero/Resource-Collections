@@ -4,7 +4,7 @@ services:
     runtime: node
     region: singapore
     buildCommand: npm ci && npm run build
-    startCommand: npm run db:migrate && npm run start:cluster
+    startCommand: node scripts/start-production.mjs
     healthCheckPath: /
     autoDeployTrigger: commit
     envVars:

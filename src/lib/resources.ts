@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, count, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   resourceFiles,
@@ -12,48 +12,22 @@ import {
 } from "@/db/schema";
 import type { AppUser } from "@/lib/users";
 
-export async function listResourcesForUser(user: AppUser, isAdmin: boolean) {
+export async function listResourcesForUser(user: AppUser | null, isAdmin: boolean) {
   const database = getDb();
   const now = new Date();
 
-  const baseQuery = database
-    .select({ resource: resources })
-    .from(resources)
-    .leftJoin(
-      resourcePermissions,
-      and(
-        eq(resourcePermissions.resourceId, resources.id),
-        eq(resourcePermissions.userId, user.id),
-      ),
-    );
-
+  const baseQuery = database.select({ resource: resources }).from(resources);
   const rows = isAdmin
     ? await baseQuery.orderBy(desc(resources.createdAt))
     : await baseQuery
-        .where(
-          and(
-            eq(resources.status, "published"),
-            or(
-              eq(resources.accessLevel, "public"),
-              eq(resources.accessLevel, "authenticated"),
-              and(
-                eq(resources.accessLevel, "restricted"),
-                eq(resourcePermissions.canDownload, true),
-                or(
-                  isNull(resourcePermissions.expiresAt),
-                  gt(resourcePermissions.expiresAt, now),
-                ),
-              ),
-            ),
-          ),
-        )
+        .where(eq(resources.status, "published"))
         .orderBy(desc(resources.createdAt));
 
   const resourceRows = rows.map((row) => row.resource);
   const ids = resourceRows.map((resource) => resource.id);
   if (!ids.length) return [];
 
-  const [previews, files, permissions] = await Promise.all([
+  const [previews, files, permissions, userPermissions] = await Promise.all([
     database
       .select()
       .from(resourcePreviews)
@@ -73,6 +47,21 @@ export async function listResourcesForUser(user: AppUser, isAdmin: boolean) {
           .from(resourcePermissions)
           .innerJoin(users, eq(users.id, resourcePermissions.userId))
           .where(inArray(resourcePermissions.resourceId, ids))
+      : Promise.resolve([]),
+    user
+      ? database
+          .select({
+            resourceId: resourcePermissions.resourceId,
+            canDownload: resourcePermissions.canDownload,
+            expiresAt: resourcePermissions.expiresAt,
+          })
+          .from(resourcePermissions)
+          .where(
+            and(
+              inArray(resourcePermissions.resourceId, ids),
+              eq(resourcePermissions.userId, user.id),
+            ),
+          )
       : Promise.resolve([]),
   ]);
 
@@ -100,52 +89,51 @@ export async function listResourcesForUser(user: AppUser, isAdmin: boolean) {
     else permissionsByResource.set(permission.resourceId, [permission]);
   }
 
-  return resourceRows.map((resource) => ({
-    ...resource,
-    previews: previewsByResource.get(resource.id) ?? [],
-    file: fileByResource.get(resource.id) ?? null,
-    permissions: permissionsByResource.get(resource.id) ?? [],
-  }));
+  const userPermissionByResource = new Map(
+    userPermissions.map((permission) => [permission.resourceId, permission]),
+  );
+
+  return resourceRows.map((resource) => {
+    const userPermission = userPermissionByResource.get(resource.id);
+    return {
+      ...resource,
+      previews: previewsByResource.get(resource.id) ?? [],
+      file: fileByResource.get(resource.id) ?? null,
+      permissions: permissionsByResource.get(resource.id) ?? [],
+      canDownload:
+        isAdmin ||
+        resource.accessLevel === "public" ||
+        (resource.accessLevel === "authenticated" && Boolean(user)) ||
+        (resource.accessLevel === "restricted" &&
+          Boolean(
+            userPermission?.canDownload &&
+              (!userPermission.expiresAt || userPermission.expiresAt > now),
+          )),
+    };
+  });
 }
 
 export async function getResourceBySlugForUser(
   slug: string,
-  user: AppUser,
+  user: AppUser | null,
   isAdmin: boolean,
 ) {
   const database = getDb();
-  const permissionJoin = and(
-    eq(resourcePermissions.resourceId, resources.id),
-    eq(resourcePermissions.userId, user.id),
-  );
   const accessCondition = isAdmin
     ? eq(resources.slug, slug)
     : and(
         eq(resources.slug, slug),
         eq(resources.status, "published"),
-        or(
-          eq(resources.accessLevel, "public"),
-          eq(resources.accessLevel, "authenticated"),
-          and(
-            eq(resources.accessLevel, "restricted"),
-            eq(resourcePermissions.canDownload, true),
-            or(
-              isNull(resourcePermissions.expiresAt),
-              gt(resourcePermissions.expiresAt, new Date()),
-            ),
-          ),
-        ),
       );
 
   const [row] = await database
     .select({ resource: resources })
     .from(resources)
-    .leftJoin(resourcePermissions, permissionJoin)
     .where(accessCondition)
     .limit(1);
   if (!row) return null;
 
-  const [previews, files] = await Promise.all([
+  const [previews, files, permission] = await Promise.all([
     database
       .select()
       .from(resourcePreviews)
@@ -156,9 +144,38 @@ export async function getResourceBySlugForUser(
       .from(resourceFiles)
       .where(eq(resourceFiles.resourceId, row.resource.id))
       .limit(1),
+    user && row.resource.accessLevel === "restricted"
+      ? database
+          .select({
+            canDownload: resourcePermissions.canDownload,
+            expiresAt: resourcePermissions.expiresAt,
+          })
+          .from(resourcePermissions)
+          .where(
+            and(
+              eq(resourcePermissions.resourceId, row.resource.id),
+              eq(resourcePermissions.userId, user.id),
+            ),
+          )
+          .limit(1)
+      : Promise.resolve([]),
   ]);
 
-  return { ...row.resource, previews, file: files[0] ?? null };
+  const grant = permission[0];
+  return {
+    ...row.resource,
+    previews,
+    file: files[0] ?? null,
+    canDownload:
+      isAdmin ||
+      row.resource.accessLevel === "public" ||
+      (row.resource.accessLevel === "authenticated" && Boolean(user)) ||
+      (row.resource.accessLevel === "restricted" &&
+        Boolean(
+          grant?.canDownload &&
+            (!grant.expiresAt || grant.expiresAt > new Date()),
+        )),
+  };
 }
 
 export type ResourceListItem = Awaited<

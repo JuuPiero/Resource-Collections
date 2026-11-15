@@ -1,10 +1,10 @@
 import "server-only";
 
 import type { Session } from "next-auth";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
-import { normalizeEmail } from "@/lib/authz";
+import { isAdminEmail, normalizeEmail } from "@/lib/authz";
 
 export type AppUser = typeof users.$inferSelect;
 
@@ -30,6 +30,7 @@ export async function ensureAppUser(session: Session): Promise<AppUser> {
         avatarUrl: session.user.image,
         lastLoginAt: now,
         updatedAt: now,
+        ...(isAdminEmail(normalizedEmail) ? { isActive: true } : {}),
       },
     })
     .returning();
@@ -45,4 +46,18 @@ export async function findUserByEmail(email: string) {
     .where(eq(users.email, normalizeEmail(email)))
     .limit(1);
   return user ?? null;
+}
+
+export async function listUsersForAdmin() {
+  return getDb()
+    .select({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      isActive: users.isActive,
+      createdAt: users.createdAt,
+      lastLoginAt: users.lastLoginAt,
+    })
+    .from(users)
+    .orderBy(desc(users.createdAt));
 }

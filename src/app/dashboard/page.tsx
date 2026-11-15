@@ -1,33 +1,23 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
+  ArrowRight,
   Boxes,
   Download,
-  Eye,
   LockKeyhole,
   PackageCheck,
   Plus,
   Users,
 } from "lucide-react";
 import { auth } from "@/auth";
+import { UploadResourceForm } from "@/components/admin-tools";
 import {
-  PermissionManager,
-  ResourceManager,
-  UploadResourceForm,
-} from "@/components/admin-tools";
-import {
-  categoryLabels,
   DashboardNav,
-  formatBytes,
   StoreHeader,
 } from "@/components/store-ui";
 import { isAdminEmail } from "@/lib/authz";
-import {
-  getAdminDashboardStats,
-  listResourcesForUser,
-} from "@/lib/resources";
+import { getAdminDashboardStats } from "@/lib/resources";
 import { ensureAppUser } from "@/lib/users";
 
 export const metadata: Metadata = { title: "Owner Dashboard" };
@@ -38,17 +28,14 @@ export default async function DashboardPage() {
   if (!session) redirect("/login");
   if (!isAdminEmail(session.user.email)) redirect("/library");
 
-  const user = await ensureAppUser(session);
-  const [items, stats] = await Promise.all([
-    listResourcesForUser(user, true),
-    getAdminDashboardStats(),
-  ]);
+  await ensureAppUser(session);
+  const stats = await getAdminDashboardStats();
 
   return (
     <main className="min-h-screen bg-[#101219] text-white">
       <StoreHeader active="dashboard" isAdmin session={session} />
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-[1440px]">
-        <DashboardNav />
+      <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-[1440px] flex-col lg:flex-row">
+        <DashboardNav active="overview" />
         <div className="min-w-0 flex-1 p-5 sm:p-8">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-[#8b7cf6]">PiaStore owner workspace</p><h1 className="mt-2 text-3xl font-bold tracking-[-.04em]">Dashboard</h1><p className="mt-2 text-xs text-white/40">Manage your catalog, licenses and delivery pipeline.</p></div>
@@ -69,29 +56,50 @@ export default async function DashboardPage() {
           </section>
 
           <section className="mt-7">
-            <div className="mb-4 flex items-center justify-between"><div><h2 className="text-sm font-bold">Catalog management</h2><p className="mt-1 text-[10px] text-white/35">Edit resource details, remove uploads and manage access.</p></div><Link className="inline-flex items-center gap-1.5 text-[10px] font-bold text-[#a99eff] hover:text-white" href="/library"><Eye size={13} /> View PiaStore</Link></div>
-            <div className="grid gap-4 xl:grid-cols-2">
-              {items.map((item) => {
-                const preview = item.previews[0];
-                return <article className="overflow-hidden rounded-xl border border-white/8 bg-[#191b24]" key={item.id}>
-                  <div className="flex gap-4 p-4">
-                    <Link className="relative h-24 w-32 shrink-0 overflow-hidden rounded-lg bg-[#272a36]" href={`/assets/${item.slug}`}>
-                      {preview ? <Image alt="" className="object-cover" fill sizes="128px" src={preview.thumbUrl ?? preview.imageUrl} /> : <span className="absolute inset-0 grid place-items-center"><Boxes className="text-[#8b7cf6]" size={24} /></span>}
-                    </Link>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-3"><div><Link className="line-clamp-1 text-sm font-bold hover:text-[#a99eff]" href={`/assets/${item.slug}`}>{item.title}</Link><p className="mt-1 text-[9px] uppercase tracking-[.11em] text-white/35">{categoryLabels[item.category] ?? "Other"} {item.version ? `· v${item.version}` : ""}</p></div><span className={`rounded px-2 py-1 text-[8px] font-black uppercase tracking-wider ${item.status === "published" ? "bg-emerald-400/10 text-emerald-300" : "bg-amber-400/10 text-amber-300"}`}>{item.status}</span></div>
-                      <div className="mt-4 flex items-center gap-4 text-[9px] text-white/35"><span>{item.accessLevel}</span><span>{item.file ? formatBytes(item.file.size) : "No file"}</span><span>{item.permissions.length} licenses</span></div>
-                    </div>
-                  </div>
-                  {item.accessLevel === "restricted" && <div className="[&_input]:rounded-md [&_button]:rounded-md"><PermissionManager initialEmails={item.permissions.map((permission) => permission.email)} resourceId={item.id} /></div>}
-                  <ResourceManager item={item} />
-                </article>;
-              })}
+            <div className="mb-4">
+              <h2 className="text-sm font-bold">Management tools</h2>
+              <p className="mt-1 text-[10px] text-white/35">Manage your catalog and member accounts from dedicated tables.</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ManagementCard
+                description="Edit resource details, change publishing and access settings, manage licenses, or delete ZIPs."
+                href="/dashboard/assets"
+                icon={Boxes}
+                label="Manage assets"
+              />
+              <ManagementCard
+                description="Review member accounts, check activity, and enable or disable account access."
+                href="/dashboard/users"
+                icon={Users}
+                label="Manage users"
+              />
             </div>
           </section>
         </div>
       </div>
     </main>
+  );
+}
+
+function ManagementCard({
+  description,
+  href,
+  icon: Icon,
+  label,
+}: {
+  description: string;
+  href: string;
+  icon: typeof Boxes;
+  label: string;
+}) {
+  return (
+    <Link className="group rounded-xl border border-white/8 bg-[#191b24] p-5 transition hover:border-[#8b7cf6]/50 hover:bg-[#1e202b]" href={href}>
+      <span className="grid size-9 place-items-center rounded-lg bg-[#6c5ce7]/15 text-[#a99eff]"><Icon size={17} /></span>
+      <span className="mt-4 flex items-center justify-between text-sm font-bold text-white">
+        {label}<ArrowRight className="text-white/35 transition group-hover:translate-x-1 group-hover:text-[#a99eff]" size={15} />
+      </span>
+      <span className="mt-2 block text-[10px] leading-5 text-white/40">{description}</span>
+    </Link>
   );
 }
 

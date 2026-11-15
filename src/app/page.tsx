@@ -37,8 +37,8 @@ export default function Home() {
           <div className="max-w-2xl">
             <span className="inline-flex items-center gap-2 rounded-full border border-[#9b8fff]/30 bg-[#8274ee]/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.14em] text-[#c5beff]"><LockKeyhole size={12} /> Curated access · Personal licenses</span>
             <h1 className="mt-6 text-5xl font-bold leading-[1.02] tracking-[-.055em] sm:text-6xl">Production-ready assets, shared personally.</h1>
-            <p className="mt-6 max-w-xl text-base leading-7 text-white/55">A private asset marketplace inspired by the stores you already know—without the noise. Browse only the tools, packs and templates licensed directly to you.</p>
-            <div className="mt-8 flex flex-wrap gap-3"><Link className="inline-flex h-12 items-center gap-3 rounded-lg bg-[#6c5ce7] px-5 text-sm font-bold text-white shadow-[0_12px_30px_rgba(108,92,231,.25)] hover:bg-[#5b4bd6]" href="/library">Browse your assets <ArrowRight size={16} /></Link><span className="inline-flex items-center gap-2 px-3 text-xs text-white/45"><ShieldCheck size={15} className="text-emerald-400" /> Permission-protected downloads</span></div>
+            <p className="mt-6 max-w-xl text-base leading-7 text-white/55">Explore tools, packs and templates in the PiaStore catalog. Everyone can browse published resources; downloads remain protected by their access licenses.</p>
+            <div className="mt-8 flex flex-wrap gap-3"><Link className="inline-flex h-12 items-center gap-3 rounded-lg bg-[#6c5ce7] px-5 text-sm font-bold text-white shadow-[0_12px_30px_rgba(108,92,231,.25)] hover:bg-[#5b4bd6]" href="/library">Browse PiaStore <ArrowRight size={16} /></Link><span className="inline-flex items-center gap-2 px-3 text-xs text-white/45"><ShieldCheck size={15} className="text-emerald-400" /> Permission-protected downloads</span></div>
           </div>
 
           <div className="relative mx-auto w-full max-w-xl">
