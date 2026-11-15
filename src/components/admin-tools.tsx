@@ -1,15 +1,19 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { type DragEvent, type FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Check,
   ImagePlus,
   KeyRound,
   LoaderCircle,
+  Pencil,
+  Save,
+  Trash2,
   UploadCloud,
   X,
 } from "lucide-react";
+import type { ResourceListItem } from "@/lib/resources";
 
 type ArchiveDescriptor = {
   storageProvider: "local" | "s3";
@@ -100,14 +104,74 @@ async function responseJson<T>(response: Response): Promise<T> {
 export function UploadResourceForm() {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const archiveInputRef = useRef<HTMLInputElement>(null);
+  const previewInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [archiveName, setArchiveName] = useState("");
   const [previewCount, setPreviewCount] = useState(0);
+  const [draggingArchive, setDraggingArchive] = useState(false);
+  const [draggingPreviews, setDraggingPreviews] = useState(false);
   const [progress, setProgress] = useState("");
   const [message, setMessage] = useState<{
     type: "error" | "success";
     text: string;
   } | null>(null);
+
+  function selectArchive(files: FileList | File[]) {
+    const archive = files[0];
+    if (!archive) return;
+    if (
+      !archive.name.toLowerCase().endsWith(".zip") ||
+      (archive.type && !["application/zip", "application/x-zip-compressed", "application/octet-stream"].includes(archive.type))
+    ) {
+      setMessage({ type: "error", text: "Choose a ZIP archive." });
+      return;
+    }
+    if (archiveInputRef.current) {
+      const transfer = new DataTransfer();
+      transfer.items.add(archive);
+      archiveInputRef.current.files = transfer.files;
+    }
+    setArchiveName(archive.name);
+    setMessage(null);
+  }
+
+  function selectPreviews(files: FileList | File[]) {
+    const selected = Array.from(files);
+    const validTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+    const validExtensions = /\.(jpe?g|png|webp|gif)$/i;
+    if (selected.length > 8) {
+      setMessage({ type: "error", text: "Select no more than 8 preview images." });
+      return;
+    }
+    if (
+      selected.some(
+        (file) =>
+          (file.type && !validTypes.has(file.type)) ||
+          (!file.type && !validExtensions.test(file.name)),
+      )
+    ) {
+      setMessage({ type: "error", text: "Choose JPG, PNG, WebP, or GIF images." });
+      return;
+    }
+    if (previewInputRef.current) {
+      const transfer = new DataTransfer();
+      selected.forEach((file) => transfer.items.add(file));
+      previewInputRef.current.files = transfer.files;
+    }
+    setPreviewCount(selected.length);
+    setMessage(null);
+  }
+
+  function handleDrop(
+    event: DragEvent<HTMLLabelElement>,
+    selectFiles: (files: FileList) => void,
+    setDragging: (dragging: boolean) => void,
+  ) {
+    event.preventDefault();
+    setDragging(false);
+    if (event.dataTransfer.files.length) selectFiles(event.dataTransfer.files);
+  }
 
   async function submit(formData: FormData) {
     const archive = formData.get("archive");
@@ -288,21 +352,130 @@ export function UploadResourceForm() {
           Access level
           <select className="rounded-xl border border-line bg-background px-3.5 py-3 text-sm text-foreground outline-none focus:border-pine" defaultValue="restricted" name="accessLevel"><option value="restricted">Invited emails only</option><option value="authenticated">Any signed-in member</option><option value="public">Public</option></select>
         </label>
-        <label className="group grid cursor-pointer gap-1.5 text-xs font-medium text-pine">
+        <label
+          className="group grid cursor-pointer gap-1.5 text-xs font-medium text-pine"
+          onDragEnter={(event) => { event.preventDefault(); setDraggingArchive(true); }}
+          onDragLeave={(event) => { event.preventDefault(); setDraggingArchive(false); }}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => handleDrop(event, selectArchive, setDraggingArchive)}
+        >
           ZIP archive
-          <span className="flex min-h-12 items-center gap-2 truncate rounded-xl border border-dashed border-moss/55 bg-moss/5 px-3.5 text-muted group-hover:bg-moss/10"><UploadCloud className="shrink-0" size={16} /> {archiveName || "Choose an archive"}</span>
-          <input accept=".zip,application/zip" className="sr-only" name="archive" onChange={(event) => setArchiveName(event.target.files?.[0]?.name ?? "")} required type="file" />
+          <span className={`flex min-h-12 items-center gap-2 truncate rounded-xl border border-dashed px-3.5 text-muted group-hover:bg-moss/10 ${draggingArchive ? "border-pine bg-pine/10" : "border-moss/55 bg-moss/5"}`}><UploadCloud className="shrink-0" size={16} /> {archiveName || "Choose or drop a ZIP archive"}</span>
+          <input accept=".zip,application/zip" className="sr-only" name="archive" onChange={(event) => selectArchive(event.target.files ?? [])} ref={archiveInputRef} required type="file" />
         </label>
-        <label className="group grid cursor-pointer gap-1.5 text-xs font-medium text-pine sm:col-span-2">
+        <label
+          className="group grid cursor-pointer gap-1.5 text-xs font-medium text-pine sm:col-span-2"
+          onDragEnter={(event) => { event.preventDefault(); setDraggingPreviews(true); }}
+          onDragLeave={(event) => { event.preventDefault(); setDraggingPreviews(false); }}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => handleDrop(event, selectPreviews, setDraggingPreviews)}
+        >
           Preview images (up to 8)
-          <span className="flex min-h-14 items-center gap-2 rounded-xl border border-dashed border-clay/45 bg-clay/5 px-3.5 text-muted group-hover:bg-clay/10"><ImagePlus size={16} /> {previewCount ? `${previewCount} selected · optimized in your browser` : "Choose JPG, PNG, WebP, or GIF files"}</span>
-          <input accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" multiple name="previews" onChange={(event) => setPreviewCount(event.target.files?.length ?? 0)} type="file" />
+          <span className={`flex min-h-14 items-center gap-2 rounded-xl border border-dashed px-3.5 text-muted group-hover:bg-clay/10 ${draggingPreviews ? "border-pine bg-pine/10" : "border-clay/45 bg-clay/5"}`}><ImagePlus size={16} /> {previewCount ? `${previewCount} selected · optimized in your browser` : "Choose or drop JPG, PNG, WebP, or GIF files"}</span>
+          <input accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" multiple name="previews" onChange={(event) => selectPreviews(event.target.files ?? [])} ref={previewInputRef} type="file" />
         </label>
       </div>
       {progress && <p className="flex items-center gap-2 rounded-xl bg-pine/5 px-3 py-2.5 text-xs text-pine" role="status"><LoaderCircle className="animate-spin" size={14} /> {progress}</p>}
       {message && <p className={`flex items-center gap-2 border px-3 py-2.5 text-xs ${message.type === "error" ? "border-clay/40 bg-clay/10 text-clay" : "border-pine/40 bg-pine/10 text-pine"}`} role="status">{message.type === "error" ? <X size={14} /> : <Check size={14} />} {message.text}</p>}
       <button className="mt-1 inline-flex h-11 items-center justify-center gap-2 border border-pine bg-pine px-4 font-mono text-xs font-bold uppercase tracking-wider text-background hover:bg-[#d8ff9b] disabled:cursor-not-allowed disabled:opacity-60" disabled={busy} type="submit">{busy ? <LoaderCircle className="animate-spin" size={16} /> : <UploadCloud size={16} />}{busy ? "Processing..." : "Create resource"}</button>
     </form>
+  );
+}
+
+export function ResourceManager({ item }: { item: ResourceListItem }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    setBusy(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/resources/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: formData.get("title"),
+          description: formData.get("description"),
+          version: formData.get("version"),
+          category: formData.get("category"),
+          status: formData.get("status"),
+          accessLevel: formData.get("accessLevel"),
+        }),
+      });
+      const payload = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(payload.error ?? "Could not update resource.");
+      setMessage("Resource updated.");
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not update resource.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove() {
+    if (!window.confirm(`Delete "${item.title}" and its ZIP archive? This cannot be undone.`)) {
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/resources/${item.id}`, { method: "DELETE" });
+      const payload = (await response.json()) as { error?: string; warning?: string };
+      if (!response.ok) throw new Error(payload.error ?? "Could not delete resource.");
+      if (payload.warning) window.alert(payload.warning);
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not delete resource.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="border-t border-white/8 p-4">
+      <details>
+        <summary className="flex cursor-pointer list-none items-center gap-2 text-[10px] font-bold text-[#a99eff] hover:text-white">
+          <Pencil size={13} /> Edit resource details
+        </summary>
+        <form className="mt-4 grid gap-3 sm:grid-cols-2" onSubmit={save}>
+          <label className="grid gap-1 text-[10px] text-white/55 sm:col-span-2">
+            Name
+            <input className="rounded-md border border-white/10 bg-[#111318] px-3 py-2 text-xs text-white" defaultValue={item.title} maxLength={180} name="title" minLength={2} required />
+          </label>
+          <label className="grid gap-1 text-[10px] text-white/55">
+            Version
+            <input className="rounded-md border border-white/10 bg-[#111318] px-3 py-2 text-xs text-white" defaultValue={item.version ?? ""} maxLength={40} name="version" />
+          </label>
+          <label className="grid gap-1 text-[10px] text-white/55">
+            Category
+            <select className="rounded-md border border-white/10 bg-[#111318] px-3 py-2 text-xs text-white" defaultValue={item.category} name="category">
+              <option value="3d">3D Assets</option><option value="2d">2D Assets</option><option value="audio">Audio</option><option value="tools">Tools</option><option value="templates">Templates</option><option value="addons">Add-ons</option><option value="other">Other</option>
+            </select>
+          </label>
+          <label className="grid gap-1 text-[10px] text-white/55">
+            Status
+            <select className="rounded-md border border-white/10 bg-[#111318] px-3 py-2 text-xs text-white" defaultValue={item.status} name="status"><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Archived</option></select>
+          </label>
+          <label className="grid gap-1 text-[10px] text-white/55">
+            Access
+            <select className="rounded-md border border-white/10 bg-[#111318] px-3 py-2 text-xs text-white" defaultValue={item.accessLevel} name="accessLevel"><option value="restricted">Invited emails only</option><option value="authenticated">Any signed-in member</option><option value="public">Public</option></select>
+          </label>
+          <label className="grid gap-1 text-[10px] text-white/55 sm:col-span-2">
+            Description
+            <textarea className="min-h-20 rounded-md border border-white/10 bg-[#111318] px-3 py-2 text-xs text-white" defaultValue={item.description ?? ""} maxLength={5000} name="description" />
+          </label>
+          <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
+            <button className="inline-flex h-9 items-center gap-2 rounded-md bg-[#6c5ce7] px-3 text-[10px] font-bold text-white disabled:opacity-50" disabled={busy} type="submit"><Save size={13} /> Save changes</button>
+            <button className="inline-flex h-9 items-center gap-2 rounded-md border border-rose-400/30 px-3 text-[10px] font-bold text-rose-300 hover:bg-rose-400/10 disabled:opacity-50" disabled={busy} onClick={() => void remove()} type="button"><Trash2 size={13} /> Delete resource</button>
+            {message && <span className="text-[10px] text-amber-200" role="status">{message}</span>}
+          </div>
+        </form>
+      </details>
+    </div>
   );
 }
 

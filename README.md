@@ -1,6 +1,8 @@
-# Arcwell Private Asset Store
+# PiaStore
 
 Kho tài nguyên cá nhân theo concept Unity/Cocos Asset Store. Người dùng chỉ thấy và tải các asset public, dành cho thành viên, hoặc được admin cấp license theo email.
+
+Trong **Dashboard → Catalog management**, admin có thể sửa tên, phiên bản, danh mục, trạng thái, mô tả và quyền truy cập của tài nguyên; hoặc xóa tài nguyên cùng file ZIP. Khi đăng tài nguyên, có thể kéo thả file ZIP và tối đa 8 ảnh preview vào vùng chọn file.
 
 ## Kiến trúc
 

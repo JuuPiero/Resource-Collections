@@ -50,8 +50,8 @@ export function StoreHeader({
             <Boxes size={19} />
           </span>
           <span className="hidden sm:block">
-            <strong className="block text-sm font-bold tracking-tight text-white">ARCWELL</strong>
-            <span className="block text-[9px] uppercase tracking-[.18em] text-white/45">Private Asset Store</span>
+            <strong className="block text-sm font-bold tracking-tight text-white">PiaStore</strong>
+            <span className="block text-[9px] uppercase tracking-[.18em] text-white/45">Digital Resource Store</span>
           </span>
         </Link>
 
@@ -93,7 +93,7 @@ export function AssetCard({ item }: { item: ResourceListItem }) {
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <Link className="line-clamp-1 text-sm font-bold text-[#20222c] hover:text-[#6c5ce7]" href={`/assets/${item.slug}`}>{item.title}</Link>
-            <p className="mt-1 text-[10px] font-medium text-[#8a8d9b]">Arcwell Studio {item.version ? `· v${item.version}` : ""}</p>
+            <p className="mt-1 text-[10px] font-medium text-[#8a8d9b]">PiaStore {item.version ? `· v${item.version}` : ""}</p>
           </div>
           <span className="shrink-0 rounded-md bg-[#f0eefc] px-2 py-1 text-[9px] font-bold uppercase text-[#6c5ce7]">Owned</span>
         </div>

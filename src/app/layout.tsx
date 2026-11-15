@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Arcwell Resources",
-    template: "%s · Arcwell Resources",
+    default: "PiaStore",
+    template: "%s · PiaStore",
   },
   description: "A private, permission-aware library for downloadable resources.",
 };

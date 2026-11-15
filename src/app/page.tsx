@@ -25,7 +25,7 @@ export default function Home() {
     <main className="min-h-screen bg-[#f5f6f9] text-[#20222c]">
       <header className="border-b border-white/10 bg-[#111318] text-white">
         <div className="mx-auto flex h-16 max-w-[1440px] items-center px-5 lg:px-8">
-          <Link className="flex items-center gap-2.5" href="/"><span className="grid size-9 place-items-center rounded-lg bg-[#6c5ce7]"><Boxes size={19} /></span><span><strong className="block text-sm font-bold">ARCWELL</strong><span className="block text-[9px] uppercase tracking-[.18em] text-white/40">Private Asset Store</span></span></Link>
+          <Link className="flex items-center gap-2.5" href="/"><span className="grid size-9 place-items-center rounded-lg bg-[#6c5ce7]"><Boxes size={19} /></span><span><strong className="block text-sm font-bold">PiaStore</strong><span className="block text-[9px] uppercase tracking-[.18em] text-white/40">Digital Resource Store</span></span></Link>
           <nav className="ml-10 hidden items-center gap-6 text-xs font-semibold text-white/55 md:flex"><span>Assets</span><span>Tools</span><span>Templates</span><span>Audio</span></nav>
           <Link className="ml-auto inline-flex h-9 items-center gap-2 rounded-lg border border-white/15 px-4 text-xs font-bold text-white hover:bg-white/5" href="/login">Sign in <ArrowRight size={14} /></Link>
         </div>
@@ -54,7 +54,7 @@ export default function Home() {
       </section>
 
       <section className="mx-auto max-w-[1440px] px-5 py-14 lg:px-8">
-        <div className="flex items-end justify-between"><div><span className="text-[10px] font-bold uppercase tracking-[.14em] text-[#6c5ce7]">Explore the catalog</span><h2 className="mt-2 text-2xl font-bold tracking-tight">Everything you need to build</h2></div><Link className="hidden items-center gap-2 text-xs font-bold text-[#6c5ce7] sm:inline-flex" href="/library">View your store <ArrowRight size={14} /></Link></div>
+        <div className="flex items-end justify-between"><div><span className="text-[10px] font-bold uppercase tracking-[.14em] text-[#6c5ce7]">Explore the catalog</span><h2 className="mt-2 text-2xl font-bold tracking-tight">Everything you need to build</h2></div><Link className="hidden items-center gap-2 text-xs font-bold text-[#6c5ce7] sm:inline-flex" href="/library">View PiaStore <ArrowRight size={14} /></Link></div>
         <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{categories.map(({ icon: Icon, label, tone }) => <Link className="group flex items-center gap-4 rounded-xl border border-[#dedfe6] bg-white p-5 shadow-sm hover:-translate-y-1 hover:shadow-lg" href="/library" key={label}><span className={`grid size-11 place-items-center rounded-xl ${tone}`}><Icon size={20} /></span><span className="text-sm font-bold">{label}</span><ArrowRight className="ml-auto text-[#b2b4be] group-hover:text-[#6c5ce7]" size={15} /></Link>)}</div>
       </section>
 
@@ -66,7 +66,7 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="bg-[#111318] text-white"><div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-4 px-5 py-7 text-[10px] text-white/35 lg:px-8"><span>© 2026 Arcwell Private Asset Store</span><span>Built for useful things worth keeping.</span></div></footer>
+      <footer className="bg-[#111318] text-white"><div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-4 px-5 py-7 text-[10px] text-white/35 lg:px-8"><span>© 2026 PiaStore</span><span>Built for useful things worth keeping.</span></div></footer>
     </main>
   );
 }

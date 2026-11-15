@@ -65,7 +65,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ sl
             <div className="sticky top-24 rounded-xl border border-[#dedfe6] bg-white p-6 shadow-[0_12px_36px_rgba(30,33,45,.08)]">
               <span className="text-[10px] font-bold uppercase tracking-[.14em] text-[#6c5ce7]">{categoryLabels[asset.category] ?? "Asset"}</span>
               <h1 className="mt-3 text-3xl font-bold leading-tight tracking-[-.035em]">{asset.title}</h1>
-              <p className="mt-2 text-xs text-[#8a8d99]">by Arcwell Studio {asset.version ? `· Version ${asset.version}` : ""}</p>
+              <p className="mt-2 text-xs text-[#8a8d99]">by PiaStore {asset.version ? `· Version ${asset.version}` : ""}</p>
               <div className="mt-6 rounded-lg bg-[#f3f1ff] p-4">
                 <div className="flex items-center gap-2 text-xs font-bold text-[#5548bd]"><Check size={14} /> This asset is in your library</div>
                 <p className="mt-1.5 text-[10px] leading-4 text-[#77718f]">Your account has an active personal download license.</p>

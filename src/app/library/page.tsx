@@ -19,7 +19,7 @@ import { isAdminEmail } from "@/lib/authz";
 import { listResourcesForUser } from "@/lib/resources";
 import { ensureAppUser } from "@/lib/users";
 
-export const metadata: Metadata = { title: "Asset Store" };
+export const metadata: Metadata = { title: "PiaStore" };
 export const dynamic = "force-dynamic";
 
 export default async function LibraryPage({

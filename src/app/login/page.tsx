@@ -29,14 +29,14 @@ export default async function LoginPage({
             <span className="grid size-12 place-items-center border border-pine bg-pine text-background"><Archive size={21} /></span>
             <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted">Account terminal / 01</span>
           </div>
-          <p className="mt-8 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-clay">Arcwell Resource Library</p>
+          <p className="mt-8 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-clay">PiaStore Resource Library</p>
           <h1 className="mt-3 text-3xl font-semibold uppercase tracking-[-0.04em] text-foreground">Welcome back.</h1>
           <p className="mt-3 text-sm leading-6 text-muted">Sign in with your email and password to access your library.</p>
           {registered === "1" && <p className="mt-5 border border-pine/40 bg-pine/10 px-3 py-2.5 text-xs text-pine" role="status">Your account is ready. Sign in to continue.</p>}
           {adminIssue && <p className="mt-5 border border-clay/40 bg-clay/10 px-3 py-2.5 text-xs leading-5 text-clay" role="alert">Admin configuration issue: {adminIssue}</p>}
           <LoginForm />
           <p className="mt-5 text-center text-xs text-muted">
-            New to Arcwell? <Link className="font-semibold text-pine underline decoration-pine/40 underline-offset-4 hover:text-foreground" href="/register">Create an account</Link>
+            New to PiaStore? <Link className="font-semibold text-pine underline decoration-pine/40 underline-offset-4 hover:text-foreground" href="/register">Create an account</Link>
           </p>
           <div className="mt-7 flex gap-3 border-t border-line pt-6 font-mono text-[10px] leading-5 text-muted">
             <ShieldCheck className="mt-0.5 shrink-0 text-pine" size={16} />

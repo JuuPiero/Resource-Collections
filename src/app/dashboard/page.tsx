@@ -12,7 +12,11 @@ import {
   Users,
 } from "lucide-react";
 import { auth } from "@/auth";
-import { PermissionManager, UploadResourceForm } from "@/components/admin-tools";
+import {
+  PermissionManager,
+  ResourceManager,
+  UploadResourceForm,
+} from "@/components/admin-tools";
 import {
   categoryLabels,
   DashboardNav,
@@ -47,7 +51,7 @@ export default async function DashboardPage() {
         <DashboardNav />
         <div className="min-w-0 flex-1 p-5 sm:p-8">
           <div className="flex flex-wrap items-end justify-between gap-4">
-            <div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-[#8b7cf6]">Store owner workspace</p><h1 className="mt-2 text-3xl font-bold tracking-[-.04em]">Dashboard</h1><p className="mt-2 text-xs text-white/40">Manage your catalog, licenses and delivery pipeline.</p></div>
+            <div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-[#8b7cf6]">PiaStore owner workspace</p><h1 className="mt-2 text-3xl font-bold tracking-[-.04em]">Dashboard</h1><p className="mt-2 text-xs text-white/40">Manage your catalog, licenses and delivery pipeline.</p></div>
             <a className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#6c5ce7] px-4 text-xs font-bold text-white hover:bg-[#5b4bd6]" href="#new-asset"><Plus size={15} /> Add asset</a>
           </div>
 
@@ -65,7 +69,7 @@ export default async function DashboardPage() {
           </section>
 
           <section className="mt-7">
-            <div className="mb-4 flex items-center justify-between"><div><h2 className="text-sm font-bold">Catalog management</h2><p className="mt-1 text-[10px] text-white/35">Grant download licenses per asset.</p></div><Link className="inline-flex items-center gap-1.5 text-[10px] font-bold text-[#a99eff] hover:text-white" href="/library"><Eye size={13} /> View storefront</Link></div>
+            <div className="mb-4 flex items-center justify-between"><div><h2 className="text-sm font-bold">Catalog management</h2><p className="mt-1 text-[10px] text-white/35">Edit resource details, remove uploads and manage access.</p></div><Link className="inline-flex items-center gap-1.5 text-[10px] font-bold text-[#a99eff] hover:text-white" href="/library"><Eye size={13} /> View PiaStore</Link></div>
             <div className="grid gap-4 xl:grid-cols-2">
               {items.map((item) => {
                 const preview = item.previews[0];
@@ -80,6 +84,7 @@ export default async function DashboardPage() {
                     </div>
                   </div>
                   {item.accessLevel === "restricted" && <div className="[&_input]:rounded-md [&_button]:rounded-md"><PermissionManager initialEmails={item.permissions.map((permission) => permission.email)} resourceId={item.id} /></div>}
+                  <ResourceManager item={item} />
                 </article>;
               })}
             </div>
