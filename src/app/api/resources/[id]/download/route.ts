@@ -1,5 +1,6 @@
 import { Readable } from "node:stream";
 import { and, eq, gt, isNull, or } from "drizzle-orm";
+import { after } from "next/server";
 import { auth } from "@/auth";
 import { getDb } from "@/db";
 import {
@@ -72,7 +73,7 @@ export async function GET(
     );
   }
 
-  await getDb().insert(downloadAudits).values({
+  const audit = {
     resourceId: record.resource.id,
     fileId: record.file.id,
     userId: appUser?.id ?? null,
@@ -80,6 +81,11 @@ export async function GET(
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
       request.headers.get("x-real-ip"),
     userAgent: request.headers.get("user-agent"),
+  };
+  after(async () => {
+    await getDb().insert(downloadAudits).values(audit).catch((error) => {
+      console.error("Could not write download audit.", error);
+    });
   });
 
   const archive = {

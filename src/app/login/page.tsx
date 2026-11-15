@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft, Archive, ShieldCheck } from "lucide-react";
 import { LoginForm } from "@/components/auth-forms";
 import { auth } from "@/auth";
+import { getBootstrapAdminIssue } from "@/lib/bootstrap-admin";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -15,6 +16,7 @@ export default async function LoginPage({
   const session = await auth();
   if (session) redirect("/library");
   const { registered } = await searchParams;
+  const adminIssue = getBootstrapAdminIssue();
 
   return (
     <main className="grid min-h-screen place-items-center px-6 py-16">
@@ -31,6 +33,7 @@ export default async function LoginPage({
           <h1 className="mt-3 text-3xl font-semibold uppercase tracking-[-0.04em] text-foreground">Welcome back.</h1>
           <p className="mt-3 text-sm leading-6 text-muted">Sign in with your email and password to access your library.</p>
           {registered === "1" && <p className="mt-5 border border-pine/40 bg-pine/10 px-3 py-2.5 text-xs text-pine" role="status">Your account is ready. Sign in to continue.</p>}
+          {adminIssue && <p className="mt-5 border border-clay/40 bg-clay/10 px-3 py-2.5 text-xs leading-5 text-clay" role="alert">Admin configuration issue: {adminIssue}</p>}
           <LoginForm />
           <p className="mt-5 text-center text-xs text-muted">
             New to Arcwell? <Link className="font-semibold text-pine underline decoration-pine/40 underline-offset-4 hover:text-foreground" href="/register">Create an account</Link>

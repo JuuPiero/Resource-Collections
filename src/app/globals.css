@@ -30,25 +30,7 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   background-image:
     radial-gradient(circle at 15% 0%, rgb(145 184 107 / 11%), transparent 30rem),
-    radial-gradient(circle at 95% 12%, rgb(255 128 94 / 8%), transparent 26rem),
-    linear-gradient(rgb(255 255 255 / 2%) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / 2%) 1px, transparent 1px);
-  background-size: auto, auto, 32px 32px, 32px 32px;
-}
-
-body::before {
-  position: fixed;
-  z-index: 20;
-  pointer-events: none;
-  content: "";
-  inset: 0;
-  opacity: 0.14;
-  background: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent 3px,
-    rgb(0 0 0 / 35%) 4px
-  );
+    radial-gradient(circle at 95% 12%, rgb(255 128 94 / 8%), transparent 26rem);
 }
 
 button,

@@ -4,8 +4,11 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import { isAdminEmail, normalizeEmail } from "@/lib/authz";
-import { verifyPassword } from "@/lib/passwords";
-import { ensureBootstrapAdmin } from "@/lib/bootstrap-admin";
+import { verifyEnvironmentPassword, verifyPassword } from "@/lib/passwords";
+import {
+  ensureBootstrapAdmin,
+  getBootstrapAdminCredentials,
+} from "@/lib/bootstrap-admin";
 import { z } from "zod";
 
 const credentialsSchema = z.object({
@@ -25,10 +28,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const parsed = credentialsSchema.safeParse(credentials);
         if (!parsed.success) return null;
 
-        if (
-          normalizeEmail(parsed.data.email) ===
-          normalizeEmail(process.env.ADMIN_EMAIL ?? "")
-        ) {
+        const submittedEmail = normalizeEmail(parsed.data.email);
+        const adminCredentials = getBootstrapAdminCredentials();
+        const signingInAsAdmin = isAdminEmail(submittedEmail);
+
+        if (signingInAsAdmin) {
+          if (
+            !adminCredentials ||
+            !verifyEnvironmentPassword(
+              parsed.data.password,
+              adminCredentials.password,
+            )
+          ) {
+            return null;
+          }
           await ensureBootstrapAdmin();
         }
         const database = getDb();
@@ -41,13 +54,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             isActive: users.isActive,
           })
           .from(users)
-          .where(eq(users.email, normalizeEmail(parsed.data.email)))
+          .where(eq(users.email, submittedEmail))
           .limit(1);
 
-        const passwordMatches = await verifyPassword(
-          parsed.data.password,
-          user?.passwordHash,
-        );
+        const passwordMatches = signingInAsAdmin
+          ? true
+          : await verifyPassword(parsed.data.password, user?.passwordHash);
         if (!user || !user.isActive || !passwordMatches) return null;
 
         const now = new Date();

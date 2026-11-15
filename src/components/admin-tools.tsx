@@ -216,6 +216,7 @@ export function UploadResourceForm() {
         body: JSON.stringify({
           title: formData.get("title"),
           version: formData.get("version") || undefined,
+          category: formData.get("category"),
           status: formData.get("status"),
           description: formData.get("description") || undefined,
           accessLevel: formData.get("accessLevel"),
@@ -262,6 +263,18 @@ export function UploadResourceForm() {
         <label className="grid gap-1.5 text-xs font-medium text-pine">
           Version
           <input className="rounded-xl border border-line bg-background px-3.5 py-3 text-sm text-foreground outline-none placeholder:text-muted/60 focus:border-pine" maxLength={40} name="version" placeholder="2.4.0" />
+        </label>
+        <label className="grid gap-1.5 text-xs font-medium text-pine">
+          Category
+          <select className="rounded-xl border border-line bg-background px-3.5 py-3 text-sm text-foreground outline-none focus:border-pine" defaultValue="tools" name="category">
+            <option value="3d">3D Assets</option>
+            <option value="2d">2D Assets</option>
+            <option value="audio">Audio</option>
+            <option value="tools">Tools</option>
+            <option value="templates">Templates</option>
+            <option value="addons">Add-ons</option>
+            <option value="other">Other</option>
+          </select>
         </label>
         <label className="grid gap-1.5 text-xs font-medium text-pine">
           Status

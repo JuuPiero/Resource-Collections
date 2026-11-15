@@ -1,6 +1,6 @@
 import "server-only";
 
-import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 
 const KEY_LENGTH = 64;
 
@@ -49,4 +49,10 @@ export async function verifyPassword(
   const expected = Buffer.from(keyHex, "hex");
   const actual = await deriveKey(password, Buffer.from(saltHex, "hex"));
   return timingSafeEqual(expected, actual);
+}
+
+export function verifyEnvironmentPassword(supplied: string, expected: string) {
+  const suppliedDigest = createHash("sha256").update(supplied).digest();
+  const expectedDigest = createHash("sha256").update(expected).digest();
+  return timingSafeEqual(suppliedDigest, expectedDigest);
 }

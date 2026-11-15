@@ -56,3 +56,25 @@ export async function ensureBootstrapAdmin() {
     .values({ email, name: "Administrator", passwordHash })
     .onConflictDoNothing({ target: users.email });
 }
+
+export function getBootstrapAdminCredentials() {
+  const parsed = bootstrapCredentialsSchema.safeParse({
+    email: normalizeEmail(process.env.ADMIN_EMAIL ?? ""),
+    password: process.env.ADMIN_PASSWORD ?? "",
+  });
+  return parsed.success ? parsed.data : null;
+}
+
+export function getBootstrapAdminIssue() {
+  const email = process.env.ADMIN_EMAIL?.trim() ?? "";
+  const password = process.env.ADMIN_PASSWORD ?? "";
+  if (!email || !password) {
+    return "ADMIN_EMAIL or ADMIN_PASSWORD is missing on the server.";
+  }
+  if (!bootstrapCredentialsSchema.safeParse({ email, password }).success) {
+    return "ADMIN_EMAIL is invalid or ADMIN_PASSWORD has fewer than 12 characters.";
+  }
+  if (!process.env.DATABASE_URL) return "DATABASE_URL is missing on the server.";
+  if (!process.env.AUTH_SECRET) return "AUTH_SECRET is missing on the server.";
+  return null;
+}

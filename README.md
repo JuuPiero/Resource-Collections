@@ -1,106 +1,82 @@
-# Arcwell Resource Collections
+# Arcwell Private Asset Store
 
-Thư viện tài nguyên ZIP có đăng nhập bằng email/mật khẩu và phân quyền download theo từng người dùng. Admin được khai báo bằng biến môi trường, ảnh preview được lưu trên Pixhost, còn metadata/quyền/audit được lưu trong PostgreSQL.
+Kho tài nguyên cá nhân theo concept Unity/Cocos Asset Store. Người dùng chỉ thấy và tải các asset public, dành cho thành viên, hoặc được admin cấp license theo email.
 
 ## Kiến trúc
 
-- **Frontend:** Next.js 16 App Router, React 19, Tailwind CSS 4.
-- **Authentication:** Auth.js v5 credentials provider, scrypt password hashes, JWT session.
-- **Authorization:** `public`, `authenticated`, hoặc `restricted` theo email.
-- **Database:** PostgreSQL + Drizzle ORM, migration nằm trong `drizzle/`.
-- **ZIP storage:** S3/R2 direct upload bằng presigned URL; filesystem local chỉ là fallback development.
-- **Preview storage:** browser resize/convert sang WebP trước, server proxy bản nhỏ lên Pixhost primary + backup.
-- **Audit:** mỗi lượt download được ghi lại kèm user, IP và user-agent.
-
-PostgreSQL chỉ lưu metadata, không lưu binary ZIP. Với S3/R2, ZIP không đi qua Next.js: browser tự tính SHA-256 trong Web Worker, PUT thẳng lên object storage, và download bằng presigned GET 60 giây sau khi server kiểm tra quyền.
+- Next.js 16 App Router, React 19, Tailwind CSS 4.
+- Auth.js Credentials, JWT session, mật khẩu member lưu dưới dạng scrypt hash.
+- Admin được xác thực trực tiếp từ `ADMIN_EMAIL` + `ADMIN_PASSWORD` trên server.
+- PostgreSQL + Drizzle ORM cho user, asset, license và download audit.
+- ZIP upload/download trực tiếp qua S3/R2 presigned URL.
+- Browser Web Worker tính SHA-256 và tối ưu preview trước khi upload.
+- Preview được proxy lên Pixhost; server không resize ảnh.
+- PM2 cluster dùng nhiều process/CPU khi self-host hoặc chạy trên Render.
 
 ## Chạy local
 
-Yêu cầu Node.js `22.13+` và một PostgreSQL server.
+```powershell
+Copy-Item .env.example .env.local
+docker compose up -d postgres
+npm run db:migrate
+npm run dev
+```
 
-1. Tạo file cấu hình:
+Admin password phải có từ 12 đến 128 ký tự.
 
-   ```powershell
-   Copy-Item .env.example .env.local
-   ```
+## Deploy Render
 
-2. Có thể chạy PostgreSQL bằng Docker:
+Repository đã có [render.yaml](./render.yaml). Có thể tạo Blueprint hoặc cấu hình Web Service thủ công:
 
-   ```powershell
-   docker compose up -d postgres
-   ```
+- Build command: `npm ci && npm run build`
+- Start command: `npm run db:migrate && npm run start:cluster`
+- Health check: `/`
+- Node: `22.13.0` trở lên
 
-3. Điền các biến trong `.env.local`:
-
-   - `DATABASE_URL`
-   - `AUTH_SECRET` — tạo bằng `npm exec auth secret`
-   - `ADMIN_EMAIL` và `ADMIN_PASSWORD` — tài khoản admin được tạo tự động khi đăng nhập lần đầu; mật khẩu tối thiểu 12 ký tự
-
-4. Chạy migration và ứng dụng:
-   ```powershell
-   npm run db:migrate
-   npm run dev
-   ```
-
-Mở `http://localhost:3000/login` để đăng nhập tài khoản admin đã cấu hình hoặc `/register` để tạo tài khoản member. Mật khẩu admin được lưu dưới dạng scrypt hash sau lần đăng nhập đầu tiên; ứng dụng không ghi lại mật khẩu vào database dạng rõ. Member cần đăng ký trước khi admin cấp quyền theo email.
-
-Email không được xác minh qua email, vì vậy chỉ cấp quyền theo email cho người dùng đã được xác nhận ngoài ứng dụng. Tài khoản thành viên cũ từ Google OAuth không có password hash và cần được tạo lại bằng email khác hoặc di chuyển thủ công.
-
-Khi self-host production, đặt app sau reverse proxy tin cậy và cấu hình proxy chỉ chấp nhận hostname hợp lệ; Auth.js cần `trustHost` để tạo callback URL.
-
-## Biến môi trường
-
-| Biến | Bắt buộc | Ý nghĩa |
-| --- | --- | --- |
-| `DATABASE_URL` | Có | PostgreSQL connection string |
-| `AUTH_SECRET` | Có | Secret mã hóa session, tối thiểu 32 ký tự |
-| `ADMIN_EMAIL` | Có | Email của tài khoản admin được tạo tự động |
-| `ADMIN_PASSWORD` | Có | Mật khẩu admin khởi tạo, tối thiểu 12 ký tự |
-| `STORAGE_DRIVER` | Không | `s3` cho production, `local` cho development |
-| `S3_BUCKET` | Khi dùng S3 | Tên bucket private |
-| `S3_REGION` | Khi dùng S3 | Region, dùng `auto` cho Cloudflare R2 |
-| `S3_ENDPOINT` | R2/MinIO | S3 API endpoint |
-| `S3_ACCESS_KEY_ID` | R2/MinIO | Access key ký presigned URL |
-| `S3_SECRET_ACCESS_KEY` | R2/MinIO | Secret key ký presigned URL |
-| `S3_FORCE_PATH_STYLE` | Không | Bật cho một số MinIO endpoint |
-| `UPLOAD_DIR` | Không | Đường dẫn tuyệt đối lưu ZIP; mặc định `.data/uploads` |
-| `MAX_ARCHIVE_SIZE_MB` | Không | Giới hạn ZIP; mặc định 500 MB |
-| `DATABASE_POOL_MAX` | Không | Số kết nối PostgreSQL tối đa mỗi process; mặc định 10 |
-| `WEB_CONCURRENCY` | Không | Số worker PM2 cluster; mặc định 2 |
-
-## Scripts
+Trong Render Dashboard → service → **Environment**, bắt buộc khai báo:
 
 ```text
-npm run dev          # development server
-npm run build        # production build
-npm run lint         # ESLint
-npm run typecheck    # TypeScript
-npm run db:generate  # tạo migration từ schema
-npm run db:migrate   # apply migration vào PostgreSQL
-npm run db:studio    # giao diện Drizzle Studio
+DATABASE_URL
+AUTH_SECRET
+ADMIN_EMAIL
+ADMIN_PASSWORD
+STORAGE_DRIVER
 ```
 
-## Lưu ý production
+Nếu dùng R2/S3, khai báo thêm:
 
-### Chạy nhiều worker trên một máy
-
-Sau khi build, có thể chạy Next.js qua PM2 cluster trên Linux để phân phối request lên nhiều process/CPU core:
-
-```powershell
-npm run build
-npx pm2 start ecosystem.config.cjs
+```text
+S3_BUCKET
+S3_REGION
+S3_ENDPOINT
+S3_ACCESS_KEY_ID
+S3_SECRET_ACCESS_KEY
+S3_FORCE_PATH_STYLE
 ```
 
-`WEB_CONCURRENCY` mặc định là 2; đặt biến này theo số CPU và giới hạn kết nối PostgreSQL. Mỗi worker có pool riêng, tối đa `DATABASE_POOL_MAX` kết nối, nên tổng giới hạn lý thuyết là `WEB_CONCURRENCY × DATABASE_POOL_MAX`. Ví dụ, nếu database dành tối đa 20 kết nối cho ứng dụng, cấu hình `WEB_CONCURRENCY=2` và `DATABASE_POOL_MAX=10`.
+File `.env` trên máy local bị gitignore và không tự được gửi lên Render. Có thể dùng nút **Add from .env** trong Render Dashboard, sau đó chọn **Save, rebuild, and deploy**.
 
-PM2 cluster tạo nhiều process Node.js, không phải worker thread. Đây phù hợp hơn cho server hiện tại vì các tác vụ chính là chờ PostgreSQL, S3 và Pixhost; chưa có phép tính CPU nặng phía server cần chuyển sang worker thread.
+### Vì sao admin không đăng nhập được trên Render?
 
-Bucket S3/R2 phải là private và cần CORS cho origin của web. Ví dụ:
+Kiểm tra theo thứ tự:
+
+1. `ADMIN_EMAIL` và `ADMIN_PASSWORD` đã tồn tại trong Environment của đúng Web Service.
+2. `ADMIN_PASSWORD` có ít nhất 12 ký tự và không vô tình chứa dấu ngoặc kép.
+3. `DATABASE_URL` trỏ đúng database production.
+4. Migration `npm run db:migrate` đã chạy; bảng `users` phải có cột `password_hash`.
+5. Sau khi đổi biến môi trường, phải redeploy. Render không đưa biến mới vào process đang chạy.
+6. Đăng xuất/xóa cookie cũ rồi đăng nhập lại.
+
+Admin hiện xác thực mật khẩu trực tiếp từ environment nên đổi `ADMIN_PASSWORD` trên Render có hiệu lực sau redeploy, không bị khóa bởi password hash cũ trong database.
+
+## Object storage CORS
+
+Bucket phải private. CORS tối thiểu:
 
 ```json
 [
   {
-    "AllowedOrigins": ["http://localhost:3000", "https://your-domain.example"],
+    "AllowedOrigins": ["http://localhost:3000", "https://your-app.onrender.com"],
     "AllowedMethods": ["PUT"],
     "AllowedHeaders": ["content-type", "x-amz-checksum-sha256"],
     "ExposeHeaders": ["etag"],
@@ -109,4 +85,20 @@ Bucket S3/R2 phải là private và cần CORS cho origin của web. Ví dụ:
 ]
 ```
 
-Presigned upload hiện dùng một `PUT`, phù hợp ZIP tối đa 5 GB của S3 PutObject; giới hạn mặc định của app là 500 MB. Nếu tăng vượt mức đó, nên chuyển sang presigned multipart upload. `STORAGE_DRIVER=local` vẫn gửi ZIP qua server vì filesystem local không thể nhận trực tiếp từ browser.
+## Scripts
+
+```text
+npm run dev
+npm run build
+npm run start
+npm run start:cluster
+npm run lint
+npm run typecheck
+npm run db:generate
+npm run db:migrate
+npm run db:studio
+```
+
+`WEB_CONCURRENCY` điều khiển số process PM2. Mỗi process có PostgreSQL pool riêng với tối đa `DATABASE_POOL_MAX` connections; tổng tối đa xấp xỉ `WEB_CONCURRENCY × DATABASE_POOL_MAX`.
+
+`CPU_WORKER_THREADS` điều khiển Piscina worker pool dùng để xác minh SHA-256 cho local-storage fallback. Khi chạy PM2 cluster, mặc định mỗi web process chỉ tạo một CPU worker để tránh oversubscription.

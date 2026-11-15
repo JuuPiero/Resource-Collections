@@ -12,6 +12,7 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { hashFileInWorker } from "@/lib/cpu-pool";
 
 export type StorageProvider = "local" | "s3";
 
@@ -175,6 +176,11 @@ export async function saveLocalArchive(file: File, sha256: string): Promise<Stor
   const absolutePath = resolveLocalPath(storageKey);
   await mkdir(dirname(absolutePath), { recursive: true });
   await writeFile(absolutePath, Buffer.from(await file.arrayBuffer()), { flag: "wx" });
+  const actualSha256 = await hashFileInWorker(absolutePath);
+  if (actualSha256 !== sha256.toLowerCase()) {
+    await unlink(absolutePath).catch(() => undefined);
+    throw new Error("Archive checksum verification failed.");
+  }
 
   return {
     ...metadata,

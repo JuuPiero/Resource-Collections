@@ -13,6 +13,9 @@ module.exports = {
       interpreter: "node",
       exec_mode: "cluster",
       instances,
+      max_memory_restart: process.env.WEB_MAX_MEMORY ?? "768M",
+      kill_timeout: 10_000,
+      merge_logs: true,
       env: {
         NODE_ENV: "production",
       },

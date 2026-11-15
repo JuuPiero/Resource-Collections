@@ -51,6 +51,7 @@ export const resources = pgTable(
     slug: varchar("slug", { length: 220 }).notNull(),
     description: text("description"),
     version: varchar("version", { length: 40 }),
+    category: varchar("category", { length: 40 }).notNull().default("other"),
     status: resourceStatus("status").notNull().default("draft"),
     accessLevel: accessLevel("access_level").notNull().default("restricted"),
     createdById: uuid("created_by_id")
@@ -66,6 +67,7 @@ export const resources = pgTable(
   (table) => [
     uniqueIndex("resources_slug_unique").on(table.slug),
     index("resources_status_idx").on(table.status),
+    index("resources_category_idx").on(table.category),
   ],
 );
 

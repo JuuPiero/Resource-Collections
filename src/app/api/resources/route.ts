@@ -26,6 +26,9 @@ const payloadSchema = z.object({
   title: z.string().trim().min(2).max(180),
   description: z.string().trim().max(5_000).optional(),
   version: z.string().trim().max(40).optional(),
+  category: z
+    .enum(["3d", "2d", "audio", "tools", "templates", "addons", "other"])
+    .default("other"),
   status: z.enum(["draft", "published"]).default("draft"),
   accessLevel: z
     .enum(["public", "authenticated", "restricted"])
@@ -86,6 +89,7 @@ export async function POST(request: Request) {
           slug: slugify(payload.title),
           description: payload.description || null,
           version: payload.version || null,
+          category: payload.category,
           status: payload.status,
           accessLevel: payload.accessLevel,
           createdById: appUser.id,

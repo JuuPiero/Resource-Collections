@@ -1,133 +1,115 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
-  Archive,
-  Download,
-  FileArchive,
-  LogOut,
-  Settings2,
-  ShieldCheck,
+  Box,
+  ChevronRight,
+  Gamepad2,
+  LayoutGrid,
+  Search,
+  Sparkles,
 } from "lucide-react";
-import { auth, signOut } from "@/auth";
-import { PermissionManager, UploadResourceForm } from "@/components/admin-tools";
+import { auth } from "@/auth";
+import {
+  AssetCard,
+  categoryLabels,
+  StoreHeader,
+} from "@/components/store-ui";
 import { isAdminEmail } from "@/lib/authz";
 import { listResourcesForUser } from "@/lib/resources";
 import { ensureAppUser } from "@/lib/users";
 
-export const metadata: Metadata = { title: "Library" };
+export const metadata: Metadata = { title: "Asset Store" };
 export const dynamic = "force-dynamic";
 
-function formatBytes(value: number) {
-  if (!value) return "0 B";
-  const units = ["B", "KB", "MB", "GB"];
-  const index = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1);
-  return `${(value / 1024 ** index).toFixed(index > 1 ? 1 : 0)} ${units[index]}`;
-}
-
-export default async function LibraryPage() {
+export default async function LibraryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; category?: string }>;
+}) {
   const session = await auth();
   if (!session) redirect("/login");
-
   const isAdmin = isAdminEmail(session.user.email);
+  const { q = "", category = "all" } = await searchParams;
+
   let items;
   try {
-    const appUser = await ensureAppUser(session);
-    items = await listResourcesForUser(appUser, isAdmin);
+    const user = await ensureAppUser(session);
+    items = await listResourcesForUser(user, isAdmin);
   } catch (error) {
     return <SetupError message={error instanceof Error ? error.message : "The database is unavailable."} />;
   }
 
+  const query = q.trim().toLowerCase();
+  const filtered = items.filter((item) => {
+    const matchesCategory = category === "all" || item.category === category;
+    const matchesQuery =
+      !query ||
+      item.title.toLowerCase().includes(query) ||
+      item.description?.toLowerCase().includes(query);
+    return matchesCategory && matchesQuery;
+  });
+  const categoryCounts = new Map<string, number>();
+  for (const item of items) {
+    categoryCounts.set(item.category, (categoryCounts.get(item.category) ?? 0) + 1);
+  }
+
   return (
-    <main className="min-h-screen pb-20">
-      <header className="sticky top-0 z-10 border-b border-line bg-background/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-18 w-full max-w-7xl items-center justify-between px-6 lg:px-10">
-          <Link className="flex items-center gap-3" href="/">
-            <span className="grid size-9 place-items-center border border-pine bg-pine text-background"><Archive size={17} /></span>
-            <span><strong className="block font-mono text-xs tracking-[0.12em] text-foreground">ARCWELL</strong><span className="font-mono text-[9px] uppercase tracking-[0.15em] text-muted">Resource library</span></span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <div className="hidden text-right sm:block">
-              <p className="text-xs font-semibold text-foreground">{session.user.name ?? session.user.email}</p>
-              <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-pine">{isAdmin ? "Administrator" : "Member"}</p>
-            </div>
-            {session.user.image ? <Image alt="" className="size-9 rounded-full border border-line object-cover" height={36} src={session.user.image} width={36} /> : null}
-            <form action={async () => { "use server"; await signOut({ redirectTo: "/" }); }}>
-              <button aria-label="Sign out" className="grid size-9 place-items-center border border-line bg-paper text-muted hover:border-clay hover:text-clay" type="submit"><LogOut size={16} /></button>
+    <main className="min-h-screen bg-[#f5f6f9] text-[#20222c]">
+      <StoreHeader active="store" isAdmin={isAdmin} session={session} />
+
+      <section className="border-b border-[#dedfe6] bg-[#1d202a] text-white">
+        <div className="mx-auto grid max-w-[1440px] gap-8 px-5 py-10 lg:grid-cols-[1fr_420px] lg:px-8 lg:py-14">
+          <div className="max-w-2xl">
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#8b7cf6]/30 bg-[#8b7cf6]/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.14em] text-[#bdb5ff]"><Sparkles size={12} /> Your licensed collection</span>
+            <h1 className="mt-5 text-4xl font-bold tracking-[-.045em] sm:text-5xl">Assets built for your next idea.</h1>
+            <p className="mt-4 max-w-xl text-sm leading-6 text-white/55">A private marketplace of tools, templates and production-ready resources shared directly with you.</p>
+            <form className="mt-7 flex max-w-xl overflow-hidden rounded-lg border border-white/10 bg-white" method="get">
+              <span className="grid w-12 place-items-center text-[#8b8e9a]"><Search size={17} /></span>
+              <input className="h-12 min-w-0 flex-1 bg-transparent pr-3 text-sm text-[#242630] outline-none placeholder:text-[#a4a6b0]" defaultValue={q} name="q" placeholder="Search assets, tools, templates..." />
+              {category !== "all" && <input name="category" type="hidden" value={category} />}
+              <button className="m-1 rounded-md bg-[#6c5ce7] px-5 text-xs font-bold text-white hover:bg-[#5b4bd6]" type="submit">Search</button>
             </form>
           </div>
-        </div>
-      </header>
-
-      <div className="mx-auto w-full max-w-7xl px-6 pt-10 lg:px-10 lg:pt-14">
-        <section className="flex flex-col justify-between gap-6 border-b border-line pb-8 sm:flex-row sm:items-end">
-          <div>
-            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-clay">Archive index / 01</p>
-            <h1 className="mt-3 text-4xl font-semibold uppercase tracking-[-0.05em] text-foreground sm:text-5xl">Your library.</h1>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-muted">The collections you can access, ready to browse and download.</p>
-          </div>
-          <span className="inline-flex w-fit items-center gap-2 border border-line bg-paper px-3 py-2 font-mono text-[10px] uppercase tracking-wide text-muted">
-            <ShieldCheck className="text-pine" size={14} /> {items.length} {items.length === 1 ? "resource" : "resources"} available
-          </span>
-        </section>
-
-        {isAdmin && (
-          <section className="mt-9 grid overflow-hidden border-2 border-line bg-paper shadow-[6px_6px_0_rgb(198_241_122_/_10%)] lg:grid-cols-[.72fr_1.28fr]">
-            <div className="border-b border-line bg-pine p-7 text-background lg:border-b-0 lg:border-r lg:p-9">
-              <Settings2 className="text-background" size={22} />
-              <p className="mt-8 font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-background/65">Administrator console</p>
-              <h2 className="mt-3 text-2xl font-semibold uppercase tracking-tight">Add a resource</h2>
-              <p className="mt-3 text-sm leading-6 text-background/80">Hash archives in your browser, optimize previews, and upload directly to object storage.</p>
+          <div className="hidden items-center justify-center lg:flex">
+            <div className="relative grid size-56 place-items-center rounded-[2.5rem] border border-white/10 bg-[radial-gradient(circle_at_30%_20%,#8b7cf6,transparent_34%),linear-gradient(145deg,#31354a,#171922)] shadow-[0_25px_70px_rgba(0,0,0,.3)]">
+              <Gamepad2 className="text-white/85" size={72} strokeWidth={1.2} />
+              <span className="absolute -bottom-3 -right-3 rounded-xl bg-[#ffb52d] px-4 py-2 text-[10px] font-black uppercase tracking-[.12em] text-[#2a220f]">Private store</span>
             </div>
-            <div className="p-6 sm:p-8"><UploadResourceForm /></div>
-          </section>
-        )}
+          </div>
+        </div>
+      </section>
 
-        <section className="mt-12">
-          {items.length === 0 ? (
-            <div className="grid min-h-72 place-items-center border border-dashed border-line bg-paper/50 p-8 text-center">
-              <div>
-                <FileArchive className="mx-auto text-moss" size={30} strokeWidth={1.5} />
-                <h2 className="mt-4 font-mono text-sm font-bold uppercase text-foreground">No resources yet</h2>
-                <p className="mt-2 text-sm text-muted">{isAdmin ? "Add your first resource using the form above." : "An administrator has not shared a resource with you yet."}</p>
-              </div>
+      <div className="mx-auto flex max-w-[1440px] gap-7 px-5 py-8 lg:px-8">
+        <aside className="hidden w-52 shrink-0 lg:block">
+          <p className="mb-3 text-[10px] font-bold uppercase tracking-[.14em] text-[#9a9ca8]">Browse categories</p>
+          <CategoryLink active={category === "all"} count={items.length} href="/library" label="All assets" />
+          {Object.entries(categoryLabels).map(([key, label]) => (
+            <CategoryLink active={category === key} count={categoryCounts.get(key) ?? 0} href={`/library?category=${key}`} key={key} label={label} />
+          ))}
+          <div className="mt-7 rounded-xl border border-[#dedfe6] bg-white p-4">
+            <Box className="text-[#6c5ce7]" size={19} />
+            <p className="mt-3 text-xs font-bold">Personal licenses</p>
+            <p className="mt-1.5 text-[11px] leading-5 text-[#777a87]">Only assets shared with your account appear in this store.</p>
+          </div>
+        </aside>
+
+        <section className="min-w-0 flex-1">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#9a9ca8]">{category === "all" ? "All categories" : categoryLabels[category] ?? "Assets"}</p>
+              <h2 className="mt-1 text-xl font-bold tracking-tight">{query ? `Results for “${q}”` : "Available assets"}</h2>
+            </div>
+            <span className="inline-flex items-center gap-2 rounded-lg border border-[#dedfe6] bg-white px-3 py-2 text-[10px] font-semibold text-[#777a87]"><LayoutGrid size={13} /> {filtered.length} items</span>
+          </div>
+
+          {filtered.length ? (
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              {filtered.map((item) => <AssetCard item={item} key={item.id} />)}
             </div>
           ) : (
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {items.map((item, index) => {
-                const preview = item.previews[0];
-                return (
-                  <article className="overflow-hidden border border-line bg-paper shadow-[4px_4px_0_rgb(255_255_255_/_3%)]" key={item.id}>
-                    <div className="relative aspect-[1.55] overflow-hidden border-b border-line bg-[#202a20]">
-                      {preview ? (
-                        <Image alt={preview.altText ?? item.title} className="object-cover transition duration-500 hover:scale-[1.03]" fill sizes="(max-width: 768px) 100vw, 33vw" src={preview.thumbUrl ?? preview.imageUrl} />
-                      ) : (
-                        <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_25%_20%,#475b38,transparent_32%),linear-gradient(145deg,#293b2b,#141b16)]">
-                          <Archive className="text-pine/70" size={36} strokeWidth={1.3} />
-                        </div>
-                      )}
-                      <span className="absolute left-3 top-3 border border-line bg-background/90 px-2.5 py-1 font-mono text-[9px] font-semibold uppercase tracking-[0.13em] text-foreground backdrop-blur">{item.accessLevel}</span>
-                      <span className="absolute right-3 top-3 bg-background/90 px-2 py-1 font-mono text-[9px] uppercase text-muted">ARC-{String(index + 1).padStart(3, "0")}</span>
-                      {isAdmin && <span className={`absolute bottom-3 right-3 px-2.5 py-1 font-mono text-[9px] font-semibold uppercase tracking-[0.13em] ${item.status === "published" ? "bg-pine text-background" : "border border-clay bg-background text-clay"}`}>{item.status}</span>}
-                    </div>
-                    <div className="p-5">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <h2 className="font-semibold tracking-tight text-foreground">{item.title}</h2>
-                          {item.version && <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-clay">Version {item.version}</p>}
-                        </div>
-                        {item.file && <span className="shrink-0 font-mono text-[10px] text-muted">{formatBytes(item.file.size)}</span>}
-                      </div>
-                      <p className="mt-3 line-clamp-2 min-h-10 text-xs leading-5 text-muted">{item.description || "No description provided."}</p>
-                      <a className="mt-5 flex h-10 items-center justify-center gap-2 border border-pine bg-pine font-mono text-[10px] font-bold uppercase tracking-wider text-background hover:bg-[#d8ff9b]" href={`/api/resources/${item.id}/download`}>
-                        <Download size={14} /> Download ZIP
-                      </a>
-                    </div>
-                    {isAdmin && item.accessLevel === "restricted" && <PermissionManager initialEmails={item.permissions.map((permission) => permission.email)} resourceId={item.id} />}
-                  </article>
-                );
-              })}
+            <div className="grid min-h-72 place-items-center rounded-xl border border-dashed border-[#d4d5dc] bg-white p-8 text-center">
+              <div><Box className="mx-auto text-[#aaa7cb]" size={34} strokeWidth={1.4} /><h3 className="mt-4 text-sm font-bold">No assets found</h3><p className="mt-2 text-xs text-[#858895]">Try another category or ask the store owner for access.</p></div>
             </div>
           )}
         </section>
@@ -136,19 +118,10 @@ export default async function LibraryPage() {
   );
 }
 
+function CategoryLink({ active, count, href, label }: { active: boolean; count: number; href: string; label: string }) {
+  return <Link className={`mb-1 flex items-center gap-2 rounded-lg px-3 py-2.5 text-xs ${active ? "bg-[#ece9ff] font-bold text-[#5d4ed0]" : "font-medium text-[#696c78] hover:bg-white hover:text-[#333640]"}`} href={href}><ChevronRight size={12} /><span className="flex-1">{label}</span><span className="text-[9px] opacity-60">{count}</span></Link>;
+}
+
 function SetupError({ message }: { message: string }) {
-  return (
-    <main className="grid min-h-screen place-items-center px-6">
-      <section className="max-w-lg border-2 border-clay/40 bg-paper p-8 shadow-[6px_6px_0_rgb(255_128_94_/_14%)]">
-        <Archive className="text-clay" size={24} />
-        <h1 className="mt-5 text-2xl font-semibold uppercase tracking-tight text-foreground">Backend not ready</h1>
-        <p className="mt-3 text-sm leading-6 text-muted">{message}</p>
-        <div className="mt-6 border border-line bg-background p-4 font-mono text-[10px] leading-6 text-muted">
-          1. Copy .env.example to .env.local<br />
-          2. Add AUTH_SECRET and DATABASE_URL<br />
-          3. Run npm run db:migrate
-        </div>
-      </section>
-    </main>
-  );
+  return <main className="grid min-h-screen place-items-center bg-[#f5f6f9] px-6 text-[#20222c]"><section className="max-w-lg rounded-xl border border-[#dedfe6] bg-white p-8 shadow-xl"><Box className="text-[#6c5ce7]" size={24} /><h1 className="mt-5 text-2xl font-bold tracking-tight">Backend is not ready</h1><p className="mt-3 text-sm leading-6 text-[#6f7280]">{message}</p><div className="mt-6 rounded-lg bg-[#f1efff] p-4 font-mono text-xs leading-6 text-[#5548bd]">1. Configure Render environment variables<br />2. Run npm run db:migrate<br />3. Restart the service</div></section></main>;
 }
